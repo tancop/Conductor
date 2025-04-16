@@ -8,8 +8,9 @@ SteamyRPC is a small but powerful script that lets you control your Steam client
 
 1. Install the [`websockets`](https://pypi.org/project/websockets/) Python package with uv or pip
 2. Download a release zip and unpack anywhere you want
-3. Open Steam
-4. Run `server.py`
+3. Create an empty file named `.cef-enable-remote-debugging` in `C:\Program Files (x86)\Steam` or `~/.steam/steam`
+4. Open Steam
+5. Run `server.py`
 
 Repeat the last two steps any time you want to use SteamyRPC again.
 
