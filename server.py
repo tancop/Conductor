@@ -21,18 +21,6 @@ def make_handler(server_secret: str):
                 server_socket = websocket
 
                 print('SteamyRPC initialized!')
-                await server_socket.send(json.dumps({
-                    'messageId': 0,
-                    'secret': server_secret,
-                    'command': 'AddShortcut',
-                    'args': {
-                        'name': 'Aseprite',
-                        'icon': r'F:\Software\Aseprite\aseprite.exe',
-                        'exe': r'F:\Software\Aseprite\aseprite.exe',
-                        'launchOptions': [],
-                        'startDir': r'F:\Software\Aseprite'
-                    }
-                }))
             else:
                 if websocket == server_socket:
                     print('Received message from Steam:', message)
