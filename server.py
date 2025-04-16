@@ -19,10 +19,12 @@ def make_handler(rpc_secret: str):
         async for message in websocket:
             if message == ("init:" + rpc_secret):
                 if steam_socket:
-                    print("Error - Double init message detected")
+                    print("SteamyRPC re-initialized!")
                 else:
-                    steam_socket = websocket
                     print("SteamyRPC initialized!")
+                steam_socket = websocket
+            elif message.startswith("init:"):
+                print("Received bad init message")
             else:
                 if websocket == steam_socket:
                     print("Received message from Steam:", message)
@@ -77,9 +79,11 @@ async def send_payload(debugger_url: str, payload: str):
 
         await ws.send(json.dumps(command))
 
+        print("Sent payload")
+
 
 async def main():
-    rpc_secret = secrets.token_urlsafe(16)
+    rpc_secret = "pwned"  # secrets.token_urlsafe(16)
     port = 7355
 
     print("Starting SteamyRPC...")
