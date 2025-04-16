@@ -20,13 +20,12 @@ You can connect to the server at `ws://[your ip]:7355`. All requests should be f
 
 ```typescript
 {
-    messageId: number,
     command: string,
     args: object,
 }
 ```
 
-The type of `args` depends on what command you're calling. SteamyRPC will send back a WebSocket message with the message ID and return values (if any) to let you know it finished.
+The type of `args` depends on what command you're calling. SteamyRPC will send back a WebSocket message with the return values (if any) to let you know it finished.
 
 ## Commands
 

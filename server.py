@@ -8,37 +8,47 @@ import secrets
 
 from websockets.asyncio.server import serve
 
-steam_socket = None
-message_map = {}
+steam_socket: websockets.ServerConnection | None = None
+message_map: dict[int, websockets.ServerConnection] = {}
+debugger_url = ""
+payload = ""
+
+last_message_id = 0
 
 
 def make_handler(rpc_secret: str):
-    async def handler(websocket):
+    async def handler(socket: websockets.ServerConnection):
         global steam_socket
+        global last_message_id
 
-        async for message in websocket:
+        async for message in socket:
             if message == ("init:" + rpc_secret):
                 if steam_socket:
                     print("Replay attack blocked!")
                 else:
-                    steam_socket = websocket
+                    steam_socket = socket
                     print("SteamyRPC initialized!")
             elif message.startswith("init:"):
                 print("Received bad init message")
             else:
-                if websocket == steam_socket:
+                if socket == steam_socket:
                     print("Received message from Steam:", message)
 
-                    msg = json.loads(message)
-                    id = msg["messageId"]
+                    msg: dict = json.loads(message)
+                    id: int = msg["messageId"]
 
                     if id in message_map:
-                        await message_map[id].send(json.dumps(msg))
+                        client = message_map[id]
+                        message_map.pop(id, None)
+                        msg.pop("messageId", None)
+                        await client.send(json.dumps(msg))
                 else:
-                    msg = json.loads(message)
-                    id = msg["messageId"]
+                    msg: dict = json.loads(message)
 
-                    message_map[id] = websocket
+                    id = last_message_id
+                    last_message_id += 1
+
+                    message_map[id] = socket
 
                     await steam_socket.send(
                         json.dumps(
@@ -83,6 +93,9 @@ async def send_payload(debugger_url: str, payload: str):
 
 
 async def main():
+    global debugger_url
+    global payload
+
     rpc_secret = secrets.token_urlsafe(16)
     port = 7355
 
