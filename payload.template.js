@@ -30,6 +30,20 @@
                         messageId: msg.messageId,
                     }));
                     break;
+                case "InstallApp":
+                    await SteamClient.Installs.OpenInstallWizard(msg.args.appIds);
+
+                    ws.send(JSON.stringify({
+                        messageId: msg.messageId,
+                    }));
+                    break;
+                case "UninstallApp":
+                    SteamClient.Installs.OpenUninstallWizard(msg.args.appIds, msg.args.autoConfirm);
+
+                    ws.send(JSON.stringify({
+                        messageId: msg.messageId,
+                    }));
+                    break;
                 default:
                     console.error("Invalid RPC command:", msg.command);
                     return;

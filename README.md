@@ -61,6 +61,31 @@ Removes a shortcut from your library.
 
 ```typescript
 {
-    appId: number, // the shortcut's app ID, returned by AddShortcut
+    appId: number, // the removed shortcut's app ID
+}
+```
+
+### InstallApp
+
+Opens a dialog to install one or more apps. If you pass more than one ID Steam will show them in one dialog.
+
+**Arguments:**
+
+```typescript
+{
+    appIds: number[], // app IDs to be installed
+}
+```
+
+### UninstallApp
+
+Uninstalls one or more apps if `autoConfirm` is `true`, opens a uninstall dialog for them if it's `false`.
+
+**Arguments:**
+
+```typescript
+{
+    appIds: number[], // app IDs to be uninstalled
+    autoConfirm: boolean, // uninstall without asking the user?
 }
 ```

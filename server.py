@@ -58,7 +58,7 @@ def make_handler(rpc_secret: str):
 
 def make_payload(port: int, rpc_secret: str):
     payload = ""
-    with open("client.template.js", "r") as file:
+    with open("payload.template.js", "r") as file:
         for line in file.readlines():
             payload += line.replace(r"{{PORT}}", str(port)).replace(
                 r"{{SECRET}}", rpc_secret
