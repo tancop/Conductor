@@ -113,3 +113,23 @@ Stops an installed app. Does nothing if it's not running.
     appId: number, // app ID to terminate
 }
 ```
+
+### EnterGamepadUI
+
+Switches Steam to Big Picture mode (gamepad UI). Does nothing if already in Big Picture. **This will turn off SteamyRPC.**
+
+### ExitGamepadUI
+
+Switches Steam to normal mode (desktop UI). Does nothing if already in normal mode. **This will turn off SteamyRPC.**
+
+### IsGamepadUI
+
+Checks if Steam is in Big Picture mode.
+
+**Returns:**
+
+```typescript
+{
+    isGamepadUI: boolean, // `true` if Steam is in BPM, `false` if not
+}
+```

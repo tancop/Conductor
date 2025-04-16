@@ -58,6 +58,28 @@
                         messageId: msg.messageId,
                     }));
                     break;
+                case "EnterGamepadUI":
+                    await SteamClient.UI.SetUIMode(4);
+
+                    ws.send(JSON.stringify({
+                        messageId: msg.messageId,
+                    }));
+                    break;
+                case "ExitGamepadUI":
+                    await SteamClient.UI.ExitBigPictureMode();
+
+                    ws.send(JSON.stringify({
+                        messageId: msg.messageId,
+                    }));
+                    break;
+                case "IsGamepadUI":
+                    let mode = await SteamClient.UI.GetUIMode();
+
+                    ws.send(JSON.stringify({
+                        messageId: msg.messageId,
+                        isGamepadUI: (mode === 4),
+                    }));
+                    break;
                 default:
                     console.error("Invalid RPC command:", msg.command);
                     return;
