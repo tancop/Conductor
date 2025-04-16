@@ -31,8 +31,6 @@ def make_handler(rpc_secret: str):
                     id = msg["messageId"]
 
                     if id in message_map:
-                        msg.pop("messageId", None)
-                        print("Returned value to client:", msg)
                         await message_map[id].send(json.dumps(msg))
                 else:
                     msg = json.loads(message)
