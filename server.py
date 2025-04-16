@@ -83,7 +83,7 @@ async def send_payload(debugger_url: str, payload: str):
 
 
 async def main():
-    rpc_secret = "pwned"  # secrets.token_urlsafe(16)
+    rpc_secret = secrets.token_urlsafe(16)
     port = 7355
 
     print("Starting SteamyRPC...")
