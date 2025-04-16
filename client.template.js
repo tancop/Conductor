@@ -1,7 +1,13 @@
-if (window.rpc && window.rpc.readyState == WebSocket.OPEN) {
-    window.rpc.send("init:{{SECRET}}");
-} else {
+(() => {
+    if (window.rpc && window.rpc.readyState == WebSocket.OPEN) {
+        console.log("Closing open socket");
+        window.rpc.close();
+    }
+
+    console.log("Opening new socket");
+
     let ws = new WebSocket("ws://localhost:{{PORT}}");
+
     ws.addEventListener("message", async (event) => {
         let msg = JSON.parse(event.data);
         if (msg.secret === "{{SECRET}}") {
@@ -39,4 +45,4 @@ if (window.rpc && window.rpc.readyState == WebSocket.OPEN) {
     });
 
     window.rpc = ws;
-}
+})();
