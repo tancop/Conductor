@@ -89,3 +89,27 @@ Uninstalls one or more apps if `autoConfirm` is `true`, opens a uninstall dialog
     autoConfirm: boolean, // uninstall without asking the user?
 }
 ```
+
+### RunApp
+
+Starts an installed app. Does nothing if it's not installed.
+
+**Arguments:**
+
+```typescript
+{
+    appId: number, // app ID to run
+}
+```
+
+### TerminateApp
+
+Stops an installed app. Does nothing if it's not running.
+
+**Arguments:**
+
+```typescript
+{
+    appId: number, // app ID to terminate
+}
+```

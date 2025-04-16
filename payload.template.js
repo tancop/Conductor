@@ -38,7 +38,21 @@
                     }));
                     break;
                 case "UninstallApp":
-                    SteamClient.Installs.OpenUninstallWizard(msg.args.appIds, msg.args.autoConfirm);
+                    await SteamClient.Installs.OpenUninstallWizard(msg.args.appIds, msg.args.autoConfirm);
+
+                    ws.send(JSON.stringify({
+                        messageId: msg.messageId,
+                    }));
+                    break;
+                case "RunApp":
+                    await SteamClient.Apps.RunGame(msg.args.appId.toString(), "", -1, 500);
+
+                    ws.send(JSON.stringify({
+                        messageId: msg.messageId,
+                    }));
+                    break;
+                case "TerminateApp":
+                    await SteamClient.Apps.TerminateApp(msg.args.appId.toString(), false);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
