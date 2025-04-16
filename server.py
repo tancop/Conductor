@@ -15,6 +15,8 @@ payload = ""
 
 last_message_id = 0
 
+server: websockets.Server
+
 
 def make_handler(rpc_secret: str):
     async def handler(socket: websockets.ServerConnection):
@@ -29,7 +31,7 @@ def make_handler(rpc_secret: str):
                     steam_socket = socket
                     print("SteamyRPC initialized!")
             elif message.startswith("init:"):
-                print("Received bad init message")
+                print("Received bad init message!")
             else:
                 if socket == steam_socket:
                     print("Received message from Steam:", message)
@@ -41,7 +43,10 @@ def make_handler(rpc_secret: str):
                         client = message_map[id]
                         message_map.pop(id, None)
                         msg.pop("messageId", None)
-                        await client.send(json.dumps(msg))
+                        try:
+                            await client.send(json.dumps(msg))
+                        except websockets.exceptions.ConnectionClosed:
+                            print("Connection to client lost")
                 else:
                     msg: dict = json.loads(message)
 
@@ -50,16 +55,21 @@ def make_handler(rpc_secret: str):
 
                     message_map[id] = socket
 
-                    await steam_socket.send(
-                        json.dumps(
-                            {
-                                "messageId": id,
-                                "secret": rpc_secret,
-                                "command": msg["command"],
-                                "args": msg["args"],
-                            }
+                    try:
+                        await steam_socket.send(
+                            json.dumps(
+                                {
+                                    "messageId": id,
+                                    "secret": rpc_secret,
+                                    "command": msg["command"],
+                                    "args": msg["args"],
+                                }
+                            )
                         )
-                    )
+                    except websockets.exceptions.ConnectionClosed:
+                        print("Connection to Steam lost, closing...")
+                        server.close()
+                        await socket.close()
 
                     print("Forwarded command to Steam:", message)
 
@@ -95,6 +105,7 @@ async def send_payload(debugger_url: str, payload: str):
 async def main():
     global debugger_url
     global payload
+    global server
 
     rpc_secret = secrets.token_urlsafe(16)
     port = 7355
@@ -103,20 +114,56 @@ async def main():
 
     server = await serve(make_handler(rpc_secret), "", port)
 
-    tabs = requests.get("http://localhost:8080/json").json()
+    js_context_tab = None
 
-    for tab in tabs:
-        if tab["title"] == "SharedJSContext":
-            debugger_url = tab["webSocketDebuggerUrl"]
-            print("Sending payload to:", debugger_url)
+    while True:
+        try:
+            res = requests.get("http://localhost:8080/json")
+            res.raise_for_status()
+            tabs: list[dict] = res.json()
 
-            payload = make_payload(port, rpc_secret)
+            found_tab = False
 
+            for tab in tabs:
+                if tab["title"] == "SharedJSContext":
+                    js_context_tab = tab
+                    found_tab = True
+                    break
+
+            if found_tab:
+                break
+            else:
+                # none of the tabs are the right one
+                raise requests.exceptions.ConnectionError
+
+        except requests.exceptions.ConnectionError:
+            print("Connection to Steam client failed, retrying...")
+            await asyncio.sleep(1)
+
+    debugger_url = js_context_tab["webSocketDebuggerUrl"]
+    print("Sending payload to:", debugger_url)
+
+    payload = make_payload(port, rpc_secret)
+
+    tries = 0
+    while True:
+        try:
             await send_payload(debugger_url, payload)
             break
+        except (ConnectionRefusedError, websockets.exceptions.InvalidStatus):
+            print("Failed to send payload, retrying...")
+            tries += 1
+            if tries == 5:
+                print(
+                    "Failed to send payload. Check if Steam is running with remote debugging enabled."
+                )
+                return
 
     await server.serve_forever()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (asyncio.CancelledError, KeyboardInterrupt):
+        print("Goodbye!")
