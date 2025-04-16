@@ -28,6 +28,7 @@ if (window.rpc && window.rpc.readyState == WebSocket.OPEN) {
                     console.error("Invalid RPC command:", msg.command);
                     return;
             }
+            console.log("Executed RPC command:", msg)
         } else {
             console.error("Refused unauthorized RPC command");
         }
