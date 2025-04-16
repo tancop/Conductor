@@ -23,55 +23,61 @@ def make_handler(rpc_secret: str):
         global steam_socket
         global last_message_id
 
-        async for message in socket:
-            if message == ("init:" + rpc_secret):
-                if steam_socket:
-                    print("Replay attack blocked!")
+        try:
+            async for message in socket:
+                if message == ("init:" + rpc_secret):
+                    if steam_socket:
+                        print("Replay attack blocked!")
+                    else:
+                        steam_socket = socket
+                        print("SteamyRPC initialized!")
+                elif message.startswith("init:"):
+                    print("Received bad init message!")
                 else:
-                    steam_socket = socket
-                    print("SteamyRPC initialized!")
-            elif message.startswith("init:"):
-                print("Received bad init message!")
-            else:
-                if socket == steam_socket:
-                    print("Received message from Steam:", message)
+                    if socket == steam_socket:
+                        print("Received message from Steam:", message)
 
-                    msg: dict = json.loads(message)
-                    id: int = msg["messageId"]
+                        msg: dict = json.loads(message)
+                        id: int = msg["messageId"]
 
-                    if id in message_map:
-                        client = message_map[id]
-                        message_map.pop(id, None)
-                        msg.pop("messageId", None)
+                        if id in message_map:
+                            client = message_map[id]
+                            message_map.pop(id, None)
+                            msg.pop("messageId", None)
+                            try:
+                                await client.send(json.dumps(msg))
+                            except websockets.exceptions.ConnectionClosed:
+                                print("Connection to client lost")
+                    else:
+                        msg: dict = json.loads(message)
+
+                        id = last_message_id
+                        last_message_id += 1
+
+                        message_map[id] = socket
+
                         try:
-                            await client.send(json.dumps(msg))
-                        except websockets.exceptions.ConnectionClosed:
-                            print("Connection to client lost")
-                else:
-                    msg: dict = json.loads(message)
-
-                    id = last_message_id
-                    last_message_id += 1
-
-                    message_map[id] = socket
-
-                    try:
-                        await steam_socket.send(
-                            json.dumps(
-                                {
-                                    "messageId": id,
-                                    "secret": rpc_secret,
-                                    "command": msg["command"],
-                                    "args": msg["args"],
-                                }
+                            await steam_socket.send(
+                                json.dumps(
+                                    {
+                                        "messageId": id,
+                                        "secret": rpc_secret,
+                                        "command": msg["command"],
+                                        "args": msg["args"],
+                                    }
+                                )
                             )
-                        )
-                    except websockets.exceptions.ConnectionClosed:
-                        print("Connection to Steam lost, closing...")
-                        server.close()
-                        await socket.close()
+                        except websockets.exceptions.ConnectionClosed:
+                            print("Connection to Steam lost, closing...")
+                            server.close()
+                            await socket.close()
 
-                    print("Forwarded command to Steam:", message)
+                        print("Forwarded command to Steam:", message)
+        finally:
+            if socket == steam_socket:
+                print("Connection to Steam lost, closing...")
+                server.close()
+                await socket.close()
 
     return handler
 
