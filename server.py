@@ -19,10 +19,10 @@ def make_handler(rpc_secret: str):
         async for message in websocket:
             if message == ("init:" + rpc_secret):
                 if steam_socket:
-                    print("SteamyRPC re-initialized!")
+                    print("Replay attack blocked!")
                 else:
+                    steam_socket = websocket
                     print("SteamyRPC initialized!")
-                steam_socket = websocket
             elif message.startswith("init:"):
                 print("Received bad init message")
             else:
