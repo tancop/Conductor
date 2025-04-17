@@ -35,7 +35,7 @@ async def reconnect_to_steam():
 
     rpc_secret = secrets.token_urlsafe(16)
 
-    payload = make_payload(port, rpc_secret)
+    payload = make_payload(port, rpc_secret, False)
 
     tries = MAX_RECONNECT_TRIES
 
@@ -131,12 +131,14 @@ def make_handler():
     return handler
 
 
-def make_payload(port: int, rpc_secret: str):
+def make_payload(port: int, rpc_secret: str, replace: bool):
     payload = ""
     with open("payload.template.js", "r") as file:
         for line in file.readlines():
-            payload += line.replace(r"{{PORT}}", str(port)).replace(
-                r"{{SECRET}}", rpc_secret
+            payload += (
+                line.replace("$PORT", str(port))
+                .replace("$SECRET", rpc_secret)
+                .replace("$REPLACE", "true" if replace else "false")
             )
 
         return payload
@@ -196,7 +198,7 @@ async def main():
     debugger_url = js_context_tab["webSocketDebuggerUrl"]
     print("Sending payload to:", debugger_url)
 
-    payload = make_payload(port, rpc_secret)
+    payload = make_payload(port, rpc_secret, True)
 
     tries = MAX_PAYLOAD_TRIES
     while True:

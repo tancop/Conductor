@@ -1,16 +1,21 @@
 (() => {
     if (window.rpc && window.rpc.readyState == WebSocket.OPEN) {
-        console.log("Closing open socket");
-        window.rpc.close();
+        if ($REPLACE) {
+            console.log("Closing open socket");
+            window.rpc.close();
+        } else {
+            console.log("Ignoring duplicate send");
+            return;
+        }
     }
 
     console.log("Opening new socket");
 
-    let ws = new WebSocket("ws://localhost:{{PORT}}");
+    let ws = new WebSocket("ws://localhost:$PORT");
 
     ws.addEventListener("message", async (event) => {
         let msg = JSON.parse(event.data);
-        if (msg.secret === "{{SECRET}}") {
+        if (msg.secret === "$SECRET") {
             switch (msg.command) {
                 case "AddShortcut":
                     let appId = await SteamClient.Apps.AddShortcut(msg.args.name, msg.args.exe, msg.args.launchOptions.join(" "), msg.args.exe);
@@ -91,7 +96,7 @@
     });
 
     ws.addEventListener("open", () => {
-        ws.send("init:{{SECRET}}");
+        ws.send("init:$SECRET");
     });
 
     window.rpc = ws;
