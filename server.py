@@ -28,26 +28,32 @@ background_tasks = set()
 
 server: websockets.Server
 
+logger: logging.Logger
+
 
 class DowngradeInfoFilter(logging.Filter):
-    def filter(self, record):
+    def filter(self, record: logging.LogRecord):
         if record.levelno == logging.INFO:
             record.levelno = logging.DEBUG
+            record.levelname = logging.getLevelName(logging.DEBUG)
+        return True
 
 
-logging.basicConfig(
-    stream=sys.stdout,
-    level=logging.INFO,
-    format="[%(asctime)s] %(levelname)s: %(message)s",
-    datefmt="%H:%M:%S",
-)
+class ColorFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord):
+        if record.levelno == logging.INFO:
+            msg = f"[{self.formatTime(record, '%H:%M:%S')}] {record.getMessage()}"
+        else:
+            msg = f"[{self.formatTime(record, '%H:%M:%S')}] {record.levelname}: {record.getMessage()}"
 
-for lib in ["requests", "websockets", "websockets.server"]:
-    logger = logging.getLogger(lib)
-    logger.addFilter(DowngradeInfoFilter())
-
-
-logger = logging.getLogger(__name__)
+        if record.levelno == logging.WARNING:
+            return "\x1b[33;20m" + msg + "\x1b[0m"
+        elif record.levelno == logging.ERROR:
+            return "\x1b[31;20m" + msg + "\x1b[0m"
+        elif record.levelno == logging.CRITICAL:
+            return "\x1b[31;1m" + msg + "\x1b[0m"
+        else:
+            return msg
 
 
 async def reconnect_to_steam():
@@ -55,7 +61,6 @@ async def reconnect_to_steam():
     global rpc_secret
     global debugger_url
     global closing
-
     rpc_secret = secrets.token_urlsafe(16)
 
     payload = make_payload(port, rpc_secret, False)
@@ -276,6 +281,20 @@ async def main():
 
 
 if __name__ == "__main__":
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(ColorFormatter())
+
+    root_logger = logging.getLogger(None)
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.INFO)
+
+    for lib in ["requests", "websockets", "websockets.server"]:
+        logger = logging.getLogger(lib)
+        logger.addFilter(DowngradeInfoFilter())
+        logger.propagate = False
+
+    logger = logging.getLogger(__name__)
+
     try:
         asyncio.run(main())
     except (asyncio.CancelledError, KeyboardInterrupt):
