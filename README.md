@@ -115,11 +115,11 @@ Stops an installed app. Does nothing if it's not running.
 
 ### EnterGamepadUI
 
-Switches Steam to Big Picture mode (gamepad UI). Does nothing if already in Big Picture. **This will turn off SteamyRPC.**
+Switches Steam to Big Picture mode (gamepad UI). Does nothing if already in Big Picture. **This will disconnect SteamyRPC for 1-2 seconds.**
 
 ### ExitGamepadUI
 
-Switches Steam to normal mode (desktop UI). Does nothing if already in normal mode. **This will turn off SteamyRPC.**
+Switches Steam to normal mode (desktop UI). Does nothing if already in normal mode. **This will disconnect SteamyRPC for 1-2 seconds.**
 
 ### IsGamepadUI
 
