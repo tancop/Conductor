@@ -5,6 +5,8 @@ import json
 import requests
 import websockets
 import secrets
+import logging
+import sys
 
 from websockets.asyncio.server import serve
 
@@ -27,6 +29,27 @@ background_tasks = set()
 server: websockets.Server
 
 
+class DowngradeInfoFilter(logging.Filter):
+    def filter(self, record):
+        if record.levelno == logging.INFO:
+            record.levelno = logging.DEBUG
+
+
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    format="[%(asctime)s] %(levelname)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
+
+for lib in ["requests", "websockets", "websockets.server"]:
+    logger = logging.getLogger(lib)
+    logger.addFilter(DowngradeInfoFilter())
+
+
+logger = logging.getLogger(__name__)
+
+
 async def reconnect_to_steam():
     global port
     global rpc_secret
@@ -42,7 +65,7 @@ async def reconnect_to_steam():
     while tries > 0:
         try:
             if reconnecting:
-                print("Connection to Steam lost, resending payload...")
+                logger.info("Connection to Steam lost, resending payload...")
                 await send_payload(debugger_url, payload)
             else:
                 return
@@ -52,7 +75,7 @@ async def reconnect_to_steam():
             await asyncio.sleep(1)
             tries -= 1
 
-    print("Connection to Steam lost, closing...")
+    logger.info("Connection to Steam lost, closing...")
 
     closing = True
 
@@ -71,23 +94,23 @@ def make_handler():
             async for message in socket:
                 if message == ("init:" + rpc_secret):
                     if steam_socket and not reconnecting:
-                        print("Replay attack blocked!")
+                        logger.warning("Replay attack blocked!")
                     else:
                         steam_socket = socket
                         if reconnecting:
                             reconnecting = False
-                            print("Reconnected to Steam!")
+                            logger.info("Reconnected to Steam!")
                         else:
-                            print("SteamyRPC initialized!")
+                            logger.info("SteamyRPC initialized!")
 
                 elif message.startswith("init:"):
-                    print("Received bad init message:", message)
+                    logger.error("Received bad init message:", message)
                 else:
                     if socket == steam_socket:
                         msg: dict = json.loads(message)
 
                         if "messageId" not in msg:
-                            print("ERROR: Received message without ID from Steam!")
+                            logger.critical("Received message without ID from Steam!")
                             continue
 
                         id: int = msg["messageId"]
@@ -98,19 +121,19 @@ def make_handler():
                             msg.pop("messageId", None)
                             try:
                                 await client.send(json.dumps(msg))
-                                print("Sent response to client:", msg)
+                                logger.debug("Sent response to client:", msg)
                             except websockets.exceptions.ConnectionClosed:
-                                print("Connection to client lost")
+                                logger.warning("Connection to client lost")
                     else:
                         msg: dict
                         try:
                             msg = json.loads(message)
                         except json.JSONDecodeError:
-                            print("Received invalid JSON from client:", message)
+                            logger.error("Received invalid JSON from client:", message)
                             continue
 
                         if "command" not in msg:
-                            print("No command found in message")
+                            logger.error("No command found in message")
                             continue
 
                         id = last_message_id
@@ -143,7 +166,7 @@ def make_handler():
                                 )
                             )
 
-                        print("Sent command to Steam:", message)
+                        logger.debug("Sent command to Steam:", message)
         except asyncio.CancelledError:
             closing = True
         finally:
@@ -171,7 +194,7 @@ def make_payload(port: int, rpc_secret: str, replace: bool):
 
             return payload
     except FileNotFoundError:
-        print("ERROR: Payload file not found")
+        logger.critical("Payload file not found!")
         server.close()
 
 
@@ -196,7 +219,7 @@ async def main():
 
     rpc_secret = secrets.token_urlsafe(16)
 
-    print("Starting SteamyRPC...")
+    logger.info("Starting SteamyRPC...")
 
     server = await serve(make_handler(), "", port)
 
@@ -223,15 +246,15 @@ async def main():
                 raise requests.exceptions.ConnectionError
 
         except requests.exceptions.ConnectionError:
-            print("Connection to Steam client failed, retrying...")
+            logger.info("Connection to Steam client failed, retrying...")
             await asyncio.sleep(1)
 
     if "webSocketDebuggerUrl" not in js_context_tab:
-        print("ERROR: SharedJSContext has no debugger URL!")
+        logger.critical("ERROR: SharedJSContext has no debugger URL!")
         return
 
     debugger_url = js_context_tab["webSocketDebuggerUrl"]
-    print("Sending payload to:", debugger_url)
+    logger.debug("Sending payload to:", debugger_url)
 
     payload = make_payload(port, rpc_secret, True)
 
@@ -241,10 +264,10 @@ async def main():
             await send_payload(debugger_url, payload)
             break
         except (ConnectionRefusedError, websockets.exceptions.InvalidStatus):
-            print("Failed to send payload, retrying...")
+            logger.warning("Failed to send payload, retrying...")
             tries -= 1
             if tries == 0:
-                print(
+                logger.error(
                     "Failed to send payload. Check if Steam is running with remote debugging enabled."
                 )
                 return
@@ -257,4 +280,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (asyncio.CancelledError, KeyboardInterrupt):
         closing = True
-        print("Goodbye!")
+        logger.info("Goodbye!")
