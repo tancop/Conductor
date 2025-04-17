@@ -8,6 +8,10 @@ import secrets
 
 from websockets.asyncio.server import serve
 
+MAX_MESSAGE_ID = 100
+MAX_PAYLOAD_TRIES = 5
+MAX_RECONNECT_TRIES = 5
+
 steam_socket: websockets.ServerConnection | None = None
 message_map: dict[int, websockets.ServerConnection] = {}
 debugger_url = ""
@@ -33,7 +37,7 @@ async def reconnect_to_steam():
 
     payload = make_payload(port, rpc_secret)
 
-    tries = 5
+    tries = MAX_RECONNECT_TRIES
 
     while tries > 0:
         try:
@@ -95,6 +99,9 @@ def make_handler():
 
                         id = last_message_id
                         last_message_id += 1
+
+                        if last_message_id == MAX_MESSAGE_ID:
+                            last_message_id = 0
 
                         message_map[id] = socket
 
@@ -191,7 +198,7 @@ async def main():
 
     payload = make_payload(port, rpc_secret)
 
-    tries = 5
+    tries = MAX_PAYLOAD_TRIES
     while True:
         try:
             await send_payload(debugger_url, payload)
