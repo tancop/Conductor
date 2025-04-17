@@ -56,8 +56,6 @@ def make_handler():
     async def handler(socket: websockets.ServerConnection):
         global steam_socket
         global last_message_id
-        global debugger_url
-        global payload
         global reconnecting
         global rpc_secret
 
@@ -147,13 +145,10 @@ async def send_payload(debugger_url: str, payload: str):
 
 async def main():
     global debugger_url
-    global payload
     global server
     global rpc_secret
-    global port
 
     rpc_secret = secrets.token_urlsafe(16)
-    port = 7355
 
     print("Starting SteamyRPC...")
 
