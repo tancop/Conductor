@@ -45,7 +45,6 @@ async def reconnect_to_steam():
                 print("Connection to Steam lost, resending payload...")
                 await send_payload(debugger_url, payload)
             else:
-                print("Connection to Steam restored!")
                 return
 
         except (ConnectionRefusedError, websockets.exceptions.InvalidStatus):
@@ -75,15 +74,22 @@ def make_handler():
                         print("Replay attack blocked!")
                     else:
                         steam_socket = socket
-                        reconnecting = False
-                        print("SteamyRPC initialized!")
+                        if reconnecting:
+                            reconnecting = False
+                            print("Reconnected to Steam!")
+                        else:
+                            print("SteamyRPC initialized!")
+
                 elif message.startswith("init:"):
-                    print("Received bad init message!")
+                    print("Received bad init message:", message)
                 else:
                     if socket == steam_socket:
-                        print("Received message from Steam:", message)
-
                         msg: dict = json.loads(message)
+
+                        if "messageId" not in msg:
+                            print("ERROR: Received message without ID from Steam!")
+                            continue
+
                         id: int = msg["messageId"]
 
                         if id in message_map:
@@ -92,10 +98,20 @@ def make_handler():
                             msg.pop("messageId", None)
                             try:
                                 await client.send(json.dumps(msg))
+                                print("Sent response to client:", msg)
                             except websockets.exceptions.ConnectionClosed:
                                 print("Connection to client lost")
                     else:
-                        msg: dict = json.loads(message)
+                        msg: dict
+                        try:
+                            msg = json.loads(message)
+                        except json.JSONDecodeError:
+                            print("Received invalid JSON from client:", message)
+                            continue
+
+                        if "command" not in msg:
+                            print("No command found in message")
+                            continue
 
                         id = last_message_id
                         last_message_id += 1
@@ -105,18 +121,29 @@ def make_handler():
 
                         message_map[id] = socket
 
-                        await steam_socket.send(
-                            json.dumps(
-                                {
-                                    "messageId": id,
-                                    "secret": rpc_secret,
-                                    "command": msg["command"],
-                                    "args": msg["args"],
-                                }
+                        if "args" in msg:
+                            await steam_socket.send(
+                                json.dumps(
+                                    {
+                                        "messageId": id,
+                                        "secret": rpc_secret,
+                                        "command": msg["command"],
+                                        "args": msg["args"],
+                                    }
+                                )
                             )
-                        )
+                        else:
+                            await steam_socket.send(
+                                json.dumps(
+                                    {
+                                        "messageId": id,
+                                        "secret": rpc_secret,
+                                        "command": msg["command"],
+                                    }
+                                )
+                            )
 
-                        print("Forwarded command to Steam:", message)
+                        print("Sent command to Steam:", message)
         except asyncio.CancelledError:
             closing = True
         finally:
@@ -133,15 +160,19 @@ def make_handler():
 
 def make_payload(port: int, rpc_secret: str, replace: bool):
     payload = ""
-    with open("payload.template.js", "r") as file:
-        for line in file.readlines():
-            payload += (
-                line.replace("$PORT", str(port))
-                .replace("$SECRET", rpc_secret)
-                .replace("$REPLACE", "true" if replace else "false")
-            )
+    try:
+        with open("payload.template.js", "r") as file:
+            for line in file.readlines():
+                payload += (
+                    line.replace("$PORT", str(port))
+                    .replace("$SECRET", rpc_secret)
+                    .replace("$REPLACE", "true" if replace else "false")
+                )
 
-        return payload
+            return payload
+    except FileNotFoundError:
+        print("ERROR: Payload file not found")
+        server.close()
 
 
 async def send_payload(debugger_url: str, payload: str):
@@ -194,6 +225,10 @@ async def main():
         except requests.exceptions.ConnectionError:
             print("Connection to Steam client failed, retrying...")
             await asyncio.sleep(1)
+
+    if "webSocketDebuggerUrl" not in js_context_tab:
+        print("ERROR: SharedJSContext has no debugger URL!")
+        return
 
     debugger_url = js_context_tab["webSocketDebuggerUrl"]
     print("Sending payload to:", debugger_url)
