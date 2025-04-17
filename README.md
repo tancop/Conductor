@@ -16,16 +16,43 @@ Repeat the last two steps any time you want to use SteamyRPC again.
 
 ## Connecting
 
-You can connect to the server at `ws://[your ip]:7355`. All requests should be formatted like this:
+You can connect to the server at `ws://[your ip]:7355`. Requests should be JSON with the command name and arguments:
 
-```typescript
+```json
 {
-    command: string,
-    args: object,
+    "command": "RunApp",
+    "args": {
+        "appId": 730
+    }
 }
 ```
 
-The type of `args` depends on what command you're calling. SteamyRPC will send back a WebSocket message with the return values (if any) to let you know it finished.
+SteamyRPC will respond over the socket with a JSON object containing the command's return values. Commands that return nothing send an empty object. When creating a shortcut with `AddShortcut` the response can look like this:
+
+```json
+{
+    "appId": 2314605418
+}
+```
+
+## Example Code
+
+This opens Counter-Strike 2 if it's installed and prints `{}` to console.
+
+```typescript
+let ws = new WebSocket('ws://localhost:7355');
+
+ws.addEventListener('message', (event) => console.log(event.data));
+
+ws.addEventListener('open', () => {
+    ws.send(JSON.stringify({
+        command: 'RunApp',
+        args: {
+            appId: 730
+        }
+    }));
+});
+```
 
 ## Commands
 
