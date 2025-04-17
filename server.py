@@ -16,6 +16,7 @@ rpc_secret = ""
 
 last_message_id = 0
 
+closing = False
 reconnecting = False
 background_tasks = set()
 
@@ -26,6 +27,7 @@ async def reconnect_to_steam():
     global port
     global rpc_secret
     global debugger_url
+    global closing
 
     rpc_secret = secrets.token_urlsafe(16)
 
@@ -36,6 +38,7 @@ async def reconnect_to_steam():
     while tries > 0:
         try:
             if reconnecting:
+                print("Connection to Steam lost, resending payload...")
                 await send_payload(debugger_url, payload)
             else:
                 print("Connection to Steam restored!")
@@ -43,12 +46,13 @@ async def reconnect_to_steam():
 
         except (ConnectionRefusedError, websockets.exceptions.InvalidStatus):
             # try again
-            pass
-        finally:
             await asyncio.sleep(1)
             tries -= 1
 
     print("Connection to Steam lost, closing...")
+
+    closing = True
+
     server.close()
 
 
@@ -58,6 +62,7 @@ def make_handler():
         global last_message_id
         global reconnecting
         global rpc_secret
+        global closing
 
         try:
             async for message in socket:
@@ -105,11 +110,11 @@ def make_handler():
                         )
 
                         print("Forwarded command to Steam:", message)
+        except asyncio.CancelledError:
+            closing = True
         finally:
             if socket == steam_socket:
-                if not reconnecting:
-                    print("Connection to Steam lost, resending payload...")
-
+                if not reconnecting and not closing:
                     reconnecting = True
 
                     task = asyncio.create_task(reconnect_to_steam())
@@ -147,6 +152,7 @@ async def main():
     global debugger_url
     global server
     global rpc_secret
+    global closing
 
     rpc_secret = secrets.token_urlsafe(16)
 
@@ -206,4 +212,5 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (asyncio.CancelledError, KeyboardInterrupt):
+        closing = True
         print("Goodbye!")
