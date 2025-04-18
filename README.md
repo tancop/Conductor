@@ -2,7 +2,11 @@
 
 ## About
 
-SteamyRPC is a powerful script that lets you control your Steam client with a WebSocket interface. No more messing with steamcmd or VDFs. Inspired by [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader).
+This is a powerful script that lets you control your Steam client with a WebSocket interface. No more messing with steamcmd or VDFs. Inspired by [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader).
+
+## Important
+
+SteamyRPC uses TCP port `8080` to communicate with Steam and `7355` to listen for user requests. If you're running a web server or other app that uses these ports at the same time you need to turn them off or change their settings.
 
 ## Installing
 

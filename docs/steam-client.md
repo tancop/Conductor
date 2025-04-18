@@ -1,0 +1,68 @@
+# Steam Client Internals
+
+This page has all the info I learned about the Steam client from reverse engineering it, together with a not exactly detailed explanation about how SteamyRPC works.
+
+## Technologies
+
+Steam uses React in CEF (Chromium Executable Framework, like Electron but faster) for the UI and native C++ for everything else. The frontend uses MobX for state management. I wouldn't use that library at gunpoint but in this case it's useful - some RPC commands read cached data from store internals so we don't waste time recomputing it.
+
+Just like the rest of us, Steam always keeps a lot of tabs open. 17 to be specific, or 21 (savage!) in Big Picture mode. The most important one is `SharedJSContext` used to control the whole thing and interface with native code. This is the first tab to open when the client starts and the last one to close. It stays open for almost the whole time while Steam is running and only ever closes (for a couple seconds, then restarts) when switching between desktop mode and Big Picture.
+
+## Console
+
+When you open Steam in dev mode (with the `-dev` command line option) you can see a console tab to the right of your username. This is the native console where Steam prints out debug messages. It's useful for debugging but doesn't let you receive messages from outside. Instead of that, SteamyRPC uses the CEF remote debugging API to inject its payload into the JavaScript console and open a WebSocket server inside Steam's `SharedJSContext`. This API is exposed at `localhost:8080` when dev mode is on or Steam finds a file named `.cef-enable-remote-debugging` in its main folder. When Steam switches modes, the context tab closes so SteamyRPC needs to reconnect and inject the payload again.
+
+If you want to access the JS console manually, you got two options:
+
+1. Open Steam in dev mode and press F12 for dev tools.
+2. Open `chrome://inspect` (sorry Firefox users), add `localhost:8080` to the inspect target list with `Configure...` and wait until a list of tab names shows up. Scroll down to the bottom until you find `SharedJSContext`. Then click `inspect` on that entry. If you see two tabs with the same name click on the one with `pause` in its command list, the other one will 404.
+
+The JS console lets you run code inside Steam with access to all the internal APIs. It's the only way to control the UI and do things the native console doesn't support, like running non-Steam games.
+
+## Global Properties
+
+The `window` object has some interesting properties used to store data and communicate with the backend.
+
+### `SteamClient`
+
+This object is a global namespace for native calls. It's divided into sub namespaces like `Apps`, `UI` and `System`. These contain the actual functions implemented in native code. You can see the names for all of them (Steam version 1743554648) in `api-dump.json` but there's no documentation or type info, try them all out if you want! If Valve ever adds or removes functions you can dump the new API like this:
+
+```javascript
+let api = Object.fromEntries(Object.keys(SteamClient).map(key => [key, Object.keys(SteamClient[key])]));
+
+console.log(JSON.stringify(api));
+```
+
+### `appStore`
+
+This is a MobX store used for library data. Because this is MobX, reading data from it can be a bit complicated. Instead of just reading a value we need to do it through its `value_` property. The most important observables are `m_mapApps` storing your whole library, `m_cm` storing your personal data with a bunch of internal network state and `m_mapStoreTagLocalization` mapping tag numbers to names like "Action" or "Horror".
+
+## App Types
+
+Every app object has a property `app_type: number` that tells Steam how to handle it. I found 8 different app types in my library:
+
+- 1: games
+- 2: software including SFM and VR drivers
+- 4: tools including dedicated servers, mod tools, Proton, Steamworks redist and the delisted Half-Life 2 episodes
+- 8: demos
+- 256: Steam social features (news and game notes)
+- 8192: soundtracks
+- 65536: playtests downloaded as a separate app (NOT as a closed beta for the main app)
+- 1073741824: shortcuts (non-Steam games)
+
+You can list the types in your library like this, using the MobX store at `window.appStore`:
+
+```javascript
+let apps = window.appStore.m_mapApps.data_;
+
+let types = apps.entries().reduce((set, [_, game]) => set.add(game.value_.app_type), new Set());
+
+for (const type of types.keys()) {
+    console.log(`${type}:`);
+    for (const app of apps.entries().filter(([_, game]) => game.value_.app_type === type)) {
+        console.log(app);
+    }
+}
+```
+
+If you find a new one let me know!
