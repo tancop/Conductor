@@ -53,7 +53,7 @@ This is a map that lets you get the app object for a specific ID, or all the IDs
 ```javascript
 let cs2 = appStore.m_mapApps.data_.get(730).value_; // app object for Counter-Strike 2
 
-let libraryIds = appStore.m_mapApps.keys(); // your whole library
+let libraryIds = appStore.m_mapApps.data_.keys(); // your whole library
 ```
 
 ### `appStore.GetLocalizationForStoreTag(tagId: number)`
