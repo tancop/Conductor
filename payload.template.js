@@ -89,7 +89,30 @@
                     break;
                 }
                 case "TerminateApp": {
-                    await SteamClient.Apps.TerminateApp(msg.args.appId.toString(), false);
+                    /** @type {Map<number, unknown>} */
+                    let apps = window.appStore.m_mapApps.data_;
+
+                    /** @type {[number, unknown]} */
+                    let [, app] = apps.entries().find(([id,]) => id === msg.args.appId);
+
+                    if (!app) {
+                        ws.send(JSON.stringify({
+                            messageId: msg.messageId,
+                        }));
+                        break;
+                    }
+
+                    app = app.value_;
+
+                    let stringId;
+
+                    if (app.app_type === 1073741824) {
+                        stringId = app.m_gameid;
+                    } else {
+                        stringId = msg.args.appId.toString();
+                    }
+
+                    await SteamClient.Apps.TerminateApp(stringId, false);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
