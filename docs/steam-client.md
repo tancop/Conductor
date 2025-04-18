@@ -19,13 +19,13 @@ If you want to access the JS console manually, you got two options:
 
 The JS console lets you run code inside Steam with access to all the internal APIs. It's the only way to control the UI and do things the native console doesn't support, like running non-Steam games.
 
-## Global Properties
+## Global Namespaces
 
-The `window` object has some interesting properties used to store data and communicate with the backend.
+The `window` object has some important namespaces used to store data and communicate with the backend.
 
 ### `SteamClient`
 
-This object is a global namespace for native calls. It's divided into sub namespaces like `Apps`, `UI` and `System`. These contain the actual functions implemented in native code. You can see the names for all of them (Steam version 1743554648) in `api-dump.json` but there's no documentation or type info, try them all out if you want! If Valve ever adds or removes functions you can dump the new API like this:
+This object is a namespace for native calls. It's divided into sub namespaces like `Apps`, `UI` and `System`. These contain the actual functions implemented in native code. You can see the names for all of them (Steam version 1743554648) in `api-dump.json` but there's no documentation or type info, try them all out if you want! If Valve ever adds or removes functions you can dump the new API like this:
 
 ```javascript
 let api = Object.fromEntries(Object.keys(SteamClient).map(key => [key, Object.keys(SteamClient[key])]));
@@ -33,9 +33,28 @@ let api = Object.fromEntries(Object.keys(SteamClient).map(key => [key, Object.ke
 console.log(JSON.stringify(api));
 ```
 
-### `appStore`
+### App Store
 
-This is a MobX store used for library data. Because this is MobX, reading data from it can be a bit complicated. Instead of just reading a value we need to do it through its `value_` property. The most important observables are `m_mapApps` storing your whole library, `m_cm` storing your personal data with a bunch of internal network state and `m_mapStoreTagLocalization` mapping tag numbers to names like "Action" or "Horror".
+This is a MobX store used for library data. Because this is MobX, reading from it can be a bit complicated. Instead of just taking a value we need to do it through the observable's `value_` property. The most important observables are `m_mapApps` storing your whole library, `m_cm` storing your personal data with a bunch of internal network state and `m_mapStoreTagLocalization` mapping tag numbers to names like "Action" or "Horror". You can access the data inside like this:
+
+### `m_mapApps`
+
+```javascript
+let appIds = appStore.m_mapApps.data_.keys(); // iterator with IDs for every app in your library
+
+let appObjects = appStore.m_mapApps.data_.values().map(val => val.value_); // iterator with app objects
+```
+
+The app objects are just normal objects (thank God). They're instances of a private class with no stable name, so don't try to make new ones. Here are some of their more useful properties:
+
+- `app_type` (number): the [app type](#app-types)
+- `appid` (number): the app's ID, obviously
+- `installed` (boolean | undefined): you know what this is
+- `display_name` (string): normal app name
+- `sort_as` (string): internal name used for sorting, lower case with no special characters
+- `gameid` (string): internal ID used to run or terminate the app, equal to `appid.toString()` for Steam apps but not for shortcuts
+- `m_setStoreCategories` (Set\<number>): store category IDs. This is not a setter, just Hungarian.
+- `m_setStoreTags` (Set\<number>): store tag IDs
 
 ## App Types
 
