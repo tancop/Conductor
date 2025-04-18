@@ -19,9 +19,9 @@ If you want to access the JS console manually, you got two options:
 
 The JS console lets you run code inside Steam with access to all the internal APIs. It's the only way to control the UI and do things the native console doesn't support, like running non-Steam games.
 
-## Global Namespaces
+## Global Properties
 
-The `window` object has some important namespaces used to store data and communicate with the backend.
+The `window` object has some important properties used to store data and communicate with the backend.
 
 ### `SteamClient`
 
@@ -33,19 +33,9 @@ let api = Object.fromEntries(Object.keys(SteamClient).map(key => [key, Object.ke
 console.log(JSON.stringify(api));
 ```
 
-### App Store
+### `appStore.allApps`
 
-This is a MobX store used for library data. Because this is MobX, reading from it can be a bit complicated. Instead of just taking a value we need to do it through the observable's `value_` property. The most important observables are `m_mapApps` storing your whole library, `m_cm` storing your personal data with a bunch of internal network state and `m_mapStoreTagLocalization` mapping tag numbers to names like "Action" or "Horror". You can access the data inside like this:
-
-### `m_mapApps`
-
-```javascript
-let appIds = appStore.m_mapApps.data_.keys(); // iterator with IDs for every app in your library
-
-let appObjects = appStore.m_mapApps.data_.values().map(val => val.value_); // iterator with app objects
-```
-
-The app objects are just normal objects (thank God). They're instances of a private class with no stable name, so don't try to make new ones. Here are some of their more useful properties:
+This is an array with all the apps in your library. They're instances of a private class with no stable name, so don't try to make new ones. The most important parts are:
 
 - `app_type` (number): the [app type](#app-types)
 - `appid` (number): the app's ID, obviously
@@ -53,8 +43,30 @@ The app objects are just normal objects (thank God). They're instances of a priv
 - `display_name` (string): normal app name
 - `sort_as` (string): internal name used for sorting, lower case with no special characters
 - `gameid` (string): internal ID used to run or terminate the app, equal to `appid.toString()` for Steam apps but not for shortcuts
-- `m_setStoreCategories` (Set\<number>): store category IDs. This is not a setter, just Hungarian.
-- `m_setStoreTags` (Set\<number>): store tag IDs
+- `m_setStoreCategories` (Set\<number>): store category IDs for the app. These are the top level tags like Action or Role Playing.
+- `m_setStoreTags` (Set\<number>): store tag IDs for the app
+
+### `appStore.m_mapApps`
+
+This is a map that lets you get the app object for a specific ID, or all the IDs in your library like this:
+
+```javascript
+let cs2 = appStore.m_mapApps.data_.get(730).value_; // app object for Counter-Strike 2
+
+let libraryIds = appStore.m_mapApps.keys(); // your whole library
+```
+
+### `appStore.GetLocalizationForStoreTag(tagId: number)`
+
+Returns the localized name for a tag ID.
+
+### `cm`
+
+Connection manager. The only interesting properties are `persona_name` (your display name) and `steamid`, an object that lets you get your account ID with the method `GetAccountID()`. Account IDs are not the same as Steam IDs, this is the shorter version used to name your userdata folder.
+
+### `App.GetCurrentUser()`
+
+Returns an object with personal info about you, like your real account name (`strAccountName`) and Steam ID (`strSteamId`).
 
 ## App Types
 
