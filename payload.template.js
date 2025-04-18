@@ -17,7 +17,8 @@
         let msg = JSON.parse(event.data);
         if (msg.secret === "$SECRET") {
             switch (msg.command) {
-                case "AddShortcut":
+                case "AddShortcut": {
+                    /** @type {number} */
                     let appId = await SteamClient.Apps.AddShortcut(msg.args.name, msg.args.exe, msg.args.launchOptions.join(" "), msg.args.exe);
                     await SteamClient.Apps.SetShortcutName(appId, msg.args.name);
                     await SteamClient.Apps.SetShortcutIcon(appId, msg.args.icon);
@@ -28,56 +29,103 @@
                         appId,
                     }));
                     break;
-                case "RemoveShortcut":
+                }
+                case "RemoveShortcut": {
                     await SteamClient.Apps.RemoveShortcut(msg.args.appId);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
                     }));
                     break;
-                case "InstallApp":
+                }
+                case "InstallApp": {
                     await SteamClient.Installs.OpenInstallWizard(msg.args.appIds);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
                     }));
                     break;
-                case "UninstallApp":
+                }
+                case "UninstallApp": {
                     await SteamClient.Installs.OpenUninstallWizard(msg.args.appIds, msg.args.autoConfirm);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
                     }));
                     break;
-                case "RunApp":
+                }
+                case "RunApp": {
                     await SteamClient.Apps.RunGame(msg.args.appId.toString(), "", -1, 500);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
                     }));
                     break;
-                case "TerminateApp":
+                }
+                case "TerminateApp": {
                     await SteamClient.Apps.TerminateApp(msg.args.appId.toString(), false);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
                     }));
                     break;
-                case "EnterGamepadUI":
+                }
+                case "GetInstalledApps": {
+                    /** @type {Map<number, unknown>} */
+                    let apps = window.appStore.m_mapApps.data_;
+
+                    /** @type {unknown[]} */
+                    let installed = apps.entries().reduce((arr, [id, game]) => {
+                        if (game.value_.installed) {
+                            return [...arr, id];
+                        } else {
+                            return arr;
+                        }
+                    }, []);
+
+                    ws.send(JSON.stringify({
+                        messageId: msg.messageId,
+                        appIds: installed,
+                    }));
+                    break;
+                }
+                case "GetInstalledGames": {
+                    /** @type {Map<number, unknown>} */
+                    let apps = window.appStore.m_mapApps.data_;
+
+                    /** @type {unknown[]} */
+                    let installed = apps.entries().reduce((arr, [id, game]) => {
+                        if (game.value_.installed && game.value_.app_type == 1) {
+                            return [...arr, id];
+                        } else {
+                            return arr;
+                        }
+                    }, []);
+
+                    ws.send(JSON.stringify({
+                        messageId: msg.messageId,
+                        appIds: installed,
+                    }));
+                    break;
+                }
+                case "EnterGamepadUI": {
                     await SteamClient.UI.SetUIMode(4);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
                     }));
                     break;
-                case "ExitGamepadUI":
+                }
+                case "ExitGamepadUI": {
                     await SteamClient.UI.ExitBigPictureMode();
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
                     }));
                     break;
-                case "IsGamepadUI":
+                }
+                case "IsGamepadUI": {
+                    /** @type {number} */
                     let mode = await SteamClient.UI.GetUIMode();
 
                     ws.send(JSON.stringify({
@@ -85,6 +133,7 @@
                         isGamepadUI: (mode === 4),
                     }));
                     break;
+                }
                 default:
                     console.error("Invalid RPC command:", msg.command);
                     return;

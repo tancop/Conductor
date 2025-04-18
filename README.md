@@ -140,6 +140,30 @@ Stops an installed app. Does nothing if it's not running.
 }
 ```
 
+### GetInstalledApps
+
+Returns an array with IDs for every installed app, including shortcuts and non-games.
+
+**Returns:**
+
+```typescript
+{
+    appIds: number[], // ID for every installed app
+}
+```
+
+### GetInstalledGames
+
+Returns an array with IDs for every app installed from Steam.
+
+**Returns:**
+
+```typescript
+{
+    appIds: number[], // ID for every installed app
+}
+```
+
 ### EnterGamepadUI
 
 Switches Steam to Big Picture mode (gamepad UI). Does nothing if already in Big Picture. **This will disconnect SteamyRPC for 1-2 seconds.**
