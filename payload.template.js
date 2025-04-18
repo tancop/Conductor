@@ -66,8 +66,7 @@
                     /** @type {Map<number, unknown>} */
                     let apps = window.appStore.m_mapApps.data_;
 
-                    /** @type {[number, unknown]} */
-                    let [, app] = apps.entries().find(([id,]) => id === msg.args.appId);
+                    let app = apps.get(msg.args.appId);
 
                     if (!app) {
                         // app not installed
@@ -79,17 +78,7 @@
 
                     app = app.value_;
 
-                    let stringId;
-
-                    if (app.app_type === 1073741824) {
-                        // app is a shortcut, we need to use its internal game id
-                        stringId = app.m_gameid;
-                    } else {
-                        // use normal app id
-                        stringId = msg.args.appId.toString();
-                    }
-
-                    await SteamClient.Apps.RunGame(stringId, "", -1, 500);
+                    await SteamClient.Apps.RunGame(app.gameid, "", -1, 500);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -100,8 +89,7 @@
                     /** @type {Map<number, unknown>} */
                     let apps = window.appStore.m_mapApps.data_;
 
-                    /** @type {[number, unknown]} */
-                    let [, app] = apps.entries().find(([id,]) => id === msg.args.appId);
+                    let app = apps.get(msg.args.appId);
 
                     if (!app) {
                         ws.send(JSON.stringify({
@@ -112,15 +100,7 @@
 
                     app = app.value_;
 
-                    let stringId;
-
-                    if (app.app_type === 1073741824) {
-                        stringId = app.m_gameid;
-                    } else {
-                        stringId = msg.args.appId.toString();
-                    }
-
-                    await SteamClient.Apps.TerminateApp(stringId, false);
+                    await SteamClient.Apps.TerminateApp(app.gameid, false);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -133,7 +113,7 @@
 
                     // collect ids where the associated game is installed
                     /** @type {unknown[]} */
-                    let installed = apps.entries().reduce((arr, [id,]) => {
+                    let installed = apps.entries().reduce((arr, [id, game]) => {
                         if (game.value_.installed) {
                             return [...arr, id];
                         } else {
@@ -152,7 +132,7 @@
                     let apps = window.appStore.m_mapApps.data_;
 
                     /** @type {unknown[]} */
-                    let installed = apps.entries().reduce((arr, [id,]) => {
+                    let installed = apps.entries().reduce((arr, [id, game]) => {
                         if (game.value_.installed && game.value_.app_type == 1) {
                             return [...arr, id];
                         } else {
