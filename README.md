@@ -97,6 +97,18 @@ Removes a shortcut from your library.
 
 ### InstallApp
 
+Opens a dialog to install a single app.
+
+**Arguments:**
+
+```typescript
+{
+    appId: number, // app ID to be installed
+}
+```
+
+### InstallApps
+
 Opens a dialog to install one or more apps. If you pass more than one ID Steam will show them in one dialog.
 
 **Arguments:**
@@ -108,6 +120,19 @@ Opens a dialog to install one or more apps. If you pass more than one ID Steam w
 ```
 
 ### UninstallApp
+
+Uninstalls a single app if `autoConfirm` is `true`, opens a uninstall dialog if it's `false`.
+
+**Arguments:**
+
+```typescript
+{
+    appId: number, // app ID to be uninstalled
+    autoConfirm: boolean, // uninstall without asking the user?
+}
+```
+
+### UninstallApps
 
 Uninstalls one or more apps if `autoConfirm` is `true`, opens a uninstall dialog for them if it's `false`.
 

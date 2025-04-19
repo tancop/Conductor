@@ -51,6 +51,14 @@
                     break;
                 }
                 case "InstallApp": {
+                    SteamClient.Installs.OpenInstallWizard([msg.args.appId]);
+
+                    ws.send(JSON.stringify({
+                        messageId: msg.messageId,
+                    }));
+                    break;
+                }
+                case "InstallApps": {
                     SteamClient.Installs.OpenInstallWizard(msg.args.appIds);
 
                     ws.send(JSON.stringify({
@@ -59,6 +67,14 @@
                     break;
                 }
                 case "UninstallApp": {
+                    SteamClient.Installs.OpenUninstallWizard([msg.args.appId], msg.args.autoConfirm);
+
+                    ws.send(JSON.stringify({
+                        messageId: msg.messageId,
+                    }));
+                    break;
+                }
+                case "UninstallApps": {
                     SteamClient.Installs.OpenUninstallWizard(msg.args.appIds, msg.args.autoConfirm);
 
                     ws.send(JSON.stringify({
