@@ -114,7 +114,7 @@
 
                     // collect ids where the associated game is installed
                     let installed = [...apps.entries()].reduce(
-                        /** @type {(arr: number[], [number, App]) => number[]} */
+                        /** @type {(arr: number[], [id, app]: [number, { value_: App }]) => number[]} */
                         (arr, [id, game]) => {
                             if (game.value_.installed) {
                                 return [...arr, id];
@@ -133,7 +133,7 @@
                     let apps = window.appStore.m_mapApps.data_;
 
                     let installed = [...apps.entries()].reduce(
-                        /** @type {(arr: number[], [number, App]) => number[]} */
+                        /** @type {(arr: number[], [id, app]: [number, { value_: App }]) => number[]} */
                         (arr, [id, game]) => {
                             if (game.value_.installed && game.value_.app_type == 1) {
                                 return [...arr, id];

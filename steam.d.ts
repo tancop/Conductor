@@ -14,10 +14,19 @@
  */
 
 /**
- * UI mode - Desktop or Gamepad (Big Picture)
+ * Constants used to switch between desktop, Big Picture and closed mode
  */
 declare enum UIMode {
+    /**
+     * Closes all windows and disables interactions with the tray icon. Opening Steam from the taskbar or a desktop
+     * shortcut crashes SteamWebHelper. Might be used to hide Steam while a game is running
+     */
+    Closed = 1,
+
+    /** Gamepad UI (Big Picture mode). This is the default on Steam Deck */
     Gamepad = 4,
+
+    /** Desktop mode. This is the default on non-Deck devices */
     Desktop = 7
 }
 
@@ -48,7 +57,9 @@ declare namespace SteamClient {
         function TerminateApp(gameId: string, _unknown: boolean): void;
 
         /**
-         * Adds a shortcut to your Steam library.
+         * Adds a shortcut to your Steam library. This will always create a new shortcut even if one already exists with the same parameters.
+         * Generated app IDs are deterministic - adding, removing and re-adding a shortcut will produce the same initial value. If a duplicate shortcut
+         * exists, Steam will assign a different ID.
          * 
          * @param name the shortcut's internal name used to generate its ID.
          * @param exePath path to the executable, the file name without extension is used as the initial display name
@@ -135,24 +146,93 @@ declare namespace SteamClient {
 }
 
 /**
+ * App types used to control some behavior around opening, closing and configuring apps 
+ */
+declare enum AppType {
+    /** Games installed from Steam */
+    Game = 1,
+
+    /** Non-game software including SFM and VR drivers */
+    Software = 2,
+
+    /** Dedicated servers, mod tools, Proton and Steam runtimes. Also includes delisted Half-Life 2 episodes and some Valve software */
+    Tool = 4,
+
+    /** Game demos */
+    Demo = 8,
+
+    /** Steam features like news and game notes */
+    ClientFeature = 256,
+
+    /** Playtests downloaded as a separate app */
+    Playtest = 65536,
+
+    /** Non-Steam apps */
+    Shortcut = 1073741824
+}
+
+/**
  * Object representing an app in your library, stored in {@link appStore}
  */
 interface App {
     /**
-     * Internal ID used to run or terminate the app. This is equal to `appId.toString()` for Steam apps but not shortcuts
+     * The app's type - see {@link AppType} for details
      */
-    gameid: string;
+    app_type: AppType;
+
+    /**
+     * App ID. Assigned by Valve for store apps or generated from the parameters of {@link SteamClient.Apps.AddShortcut} for shortcuts
+     */
+    appid: number;
+
     /**
      * `true` if the app is installed, `false` or `undefined` if not
      */
     installed?: boolean | undefined;
+
+    /**
+     * Human-readable display name
+     */
+    display_name: string;
+
+    /**
+     * Internal name used for sorting apps. For most apps it's the lower case version of `display_name` with special characters removed,
+     * publishers can change it to get the right order for games in a series
+     */
+    sort_as: string;
+
+    /**
+     * List of tag IDs for this app. You can get their names with {@link appStore.GetLocalizationForStoreTag}
+     */
+    store_tag: number[];
+
+    /**
+     * Internal ID used to run or terminate the app. This is equal to `appid.toString()` for store apps but different for shortcuts
+     */
+    gameid: string;
 }
+
 
 /**
  * MobX store with your library data
  */
 declare namespace appStore {
+    /**
+     * Map from app ID to {@link App} object
+     */
     let m_mapApps: {
         data_: Map<number, { value_: App }>
     };
+
+    /**
+     * Array with all the apps in your library, including shortcuts
+     */
+    let allApps: App[]
+
+    /**
+     * Gets the localized human-readable name for a store tag like 'Immersive Sim' or 'LGBTQ+'.
+     * 
+     * @param tagId tag ID
+     */
+    function GetLocalizationForStoreTag(tagId: number): string;
 }
