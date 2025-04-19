@@ -6,6 +6,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
+
+// @ts-check
+
 (() => {
     if (window.rpc && window.rpc.readyState == WebSocket.OPEN) {
         if ($REPLACE) {
@@ -27,10 +30,11 @@
             switch (msg.command) {
                 case "AddShortcut": {
                     /** @type {number} */
+                    console.log(msg.args)
                     let appId = await SteamClient.Apps.AddShortcut(msg.args.name, msg.args.exe, msg.args.launchOptions.join(" "), msg.args.exe);
-                    await SteamClient.Apps.SetShortcutName(appId, msg.args.name);
-                    await SteamClient.Apps.SetShortcutIcon(appId, msg.args.icon);
-                    await SteamClient.Apps.SetShortcutStartDir(appId, msg.args.startDir);
+                    SteamClient.Apps.SetShortcutName(appId, msg.args.name);
+                    SteamClient.Apps.SetShortcutIcon(appId, msg.args.icon);
+                    SteamClient.Apps.SetShortcutStartDir(appId, msg.args.startDir);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -39,7 +43,7 @@
                     break;
                 }
                 case "RemoveShortcut": {
-                    await SteamClient.Apps.RemoveShortcut(msg.args.appId);
+                    SteamClient.Apps.RemoveShortcut(msg.args.appId);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -47,7 +51,7 @@
                     break;
                 }
                 case "InstallApp": {
-                    await SteamClient.Installs.OpenInstallWizard(msg.args.appIds);
+                    SteamClient.Installs.OpenInstallWizard(msg.args.appIds);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -55,7 +59,7 @@
                     break;
                 }
                 case "UninstallApp": {
-                    await SteamClient.Installs.OpenUninstallWizard(msg.args.appIds, msg.args.autoConfirm);
+                    SteamClient.Installs.OpenUninstallWizard(msg.args.appIds, msg.args.autoConfirm);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -63,12 +67,11 @@
                     break;
                 }
                 case "RunApp": {
-                    /** @type {Map<number, unknown>} */
                     let apps = window.appStore.m_mapApps.data_;
 
-                    let app = apps.get(msg.args.appId);
+                    let appEntry = apps.get(msg.args.appId);
 
-                    if (!app) {
+                    if (!appEntry) {
                         // app not installed
                         ws.send(JSON.stringify({
                             messageId: msg.messageId,
@@ -76,9 +79,9 @@
                         break;
                     }
 
-                    app = app.value_;
+                    let app = appEntry.value_;
 
-                    await SteamClient.Apps.RunGame(app.gameid, "", -1, 500);
+                    SteamClient.Apps.RunGame(app.gameid, "", -1, 500);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -86,21 +89,20 @@
                     break;
                 }
                 case "TerminateApp": {
-                    /** @type {Map<number, unknown>} */
                     let apps = window.appStore.m_mapApps.data_;
 
-                    let app = apps.get(msg.args.appId);
+                    let appEntry = apps.get(msg.args.appId);
 
-                    if (!app) {
+                    if (!appEntry) {
                         ws.send(JSON.stringify({
                             messageId: msg.messageId,
                         }));
                         break;
                     }
 
-                    app = app.value_;
+                    let app = appEntry.value_;
 
-                    await SteamClient.Apps.TerminateApp(app.gameid, false);
+                    SteamClient.Apps.TerminateApp(app.gameid, false);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -108,18 +110,18 @@
                     break;
                 }
                 case "GetInstalledApps": {
-                    /** @type {Map<number, unknown>} */
                     let apps = window.appStore.m_mapApps.data_;
 
                     // collect ids where the associated game is installed
-                    /** @type {unknown[]} */
-                    let installed = apps.entries().reduce((arr, [id, game]) => {
-                        if (game.value_.installed) {
-                            return [...arr, id];
-                        } else {
-                            return arr;
-                        }
-                    }, []);
+                    let installed = [...apps.entries()].reduce(
+                        /** @type {(arr: number[], [number, App]) => number[]} */
+                        (arr, [id, game]) => {
+                            if (game.value_.installed) {
+                                return [...arr, id];
+                            } else {
+                                return arr;
+                            }
+                        }, []);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -128,17 +130,17 @@
                     break;
                 }
                 case "GetInstalledGames": {
-                    /** @type {Map<number, unknown>} */
                     let apps = window.appStore.m_mapApps.data_;
 
-                    /** @type {unknown[]} */
-                    let installed = apps.entries().reduce((arr, [id, game]) => {
-                        if (game.value_.installed && game.value_.app_type == 1) {
-                            return [...arr, id];
-                        } else {
-                            return arr;
-                        }
-                    }, []);
+                    let installed = [...apps.entries()].reduce(
+                        /** @type {(arr: number[], [number, App]) => number[]} */
+                        (arr, [id, game]) => {
+                            if (game.value_.installed && game.value_.app_type == 1) {
+                                return [...arr, id];
+                            } else {
+                                return arr;
+                            }
+                        }, []);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -147,7 +149,7 @@
                     break;
                 }
                 case "EnterGamepadUI": {
-                    await SteamClient.UI.SetUIMode(4);
+                    SteamClient.UI.SetUIMode(4);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -155,7 +157,7 @@
                     break;
                 }
                 case "ExitGamepadUI": {
-                    await SteamClient.UI.ExitBigPictureMode();
+                    SteamClient.UI.SetUIMode(7);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -163,8 +165,7 @@
                     break;
                 }
                 case "IsGamepadUI": {
-                    /** @type {number} */
-                    let mode = await SteamClient.UI.GetUIMode();
+                    let mode = SteamClient.UI.GetUIMode();
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
