@@ -25,12 +25,11 @@
     let ws = new WebSocket("ws://localhost:$PORT");
 
     ws.addEventListener("message", async (event) => {
+        /** @type {RpcRequest} */
         let msg = JSON.parse(event.data);
         if (msg.secret === "$SECRET") {
             switch (msg.command) {
                 case "AddShortcut": {
-                    /** @type {number} */
-                    console.log(msg.args)
                     let appId = await SteamClient.Apps.AddShortcut(msg.args.name, msg.args.exe, msg.args.launchOptions.join(" "), msg.args.exe);
                     SteamClient.Apps.SetShortcutName(appId, msg.args.name);
                     SteamClient.Apps.SetShortcutIcon(appId, msg.args.icon);
@@ -67,7 +66,7 @@
                     break;
                 }
                 case "UninstallApp": {
-                    SteamClient.Installs.OpenUninstallWizard([msg.args.appId], msg.args.autoConfirm);
+                    SteamClient.Installs.OpenUninstallWizard([msg.args.appId], msg.args.autoConfirm ?? false);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
@@ -75,7 +74,7 @@
                     break;
                 }
                 case "UninstallApps": {
-                    SteamClient.Installs.OpenUninstallWizard(msg.args.appIds, msg.args.autoConfirm);
+                    SteamClient.Installs.OpenUninstallWizard(msg.args.appIds, msg.args.autoConfirm ?? false);
 
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
