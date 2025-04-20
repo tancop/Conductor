@@ -1,6 +1,6 @@
 # Steam Client Internals
 
-This page has all the info I learned about the Steam client from reverse engineering it, together with a not exactly detailed explanation about how SteamyRPC works.
+This page has all the info I learned about the Steam client from reverse engineering it, together with a not exactly detailed explanation about how Conductor works.
 
 ## Technologies
 
@@ -10,7 +10,7 @@ Just like the rest of us, Steam always keeps a lot of tabs open. 17 to be specif
 
 ## Console
 
-When you open Steam in dev mode (with the `-dev` command line option) you can see a console tab to the right of your username. This is the native console where Steam prints out debug messages. It's useful for debugging but doesn't let you receive messages from outside. Instead of that, SteamyRPC uses the CEF remote debugging API to inject its payload into the JavaScript console and open a WebSocket server inside Steam's `SharedJSContext`. This API is exposed at `localhost:8080` when dev mode is on or Steam finds a file named `.cef-enable-remote-debugging` in its main folder. When Steam switches modes, the context tab closes so SteamyRPC needs to reconnect and inject the payload again.
+When you open Steam in dev mode (with the `-dev` command line option) you can see a console tab to the right of your username. This is the native console where Steam prints out debug messages. It's useful for debugging but doesn't let you receive messages from outside. Instead of that, Conductor uses the CEF remote debugging API to inject its payload into the JavaScript console and open a WebSocket server inside Steam's `SharedJSContext`. This API is exposed at `localhost:8080` when dev mode is on or Steam finds a file named `.cef-enable-remote-debugging` in its main folder. When Steam switches modes, the context tab closes so Conductor needs to reconnect and inject the payload again.
 
 If you want to access the JS console manually, you got two options:
 

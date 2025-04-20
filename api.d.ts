@@ -127,14 +127,14 @@ type RpcCommands = {
         },
     },
     /**
-     * Switches Steam to gamepad UI (Big Picture). Does nothing if already in that mode. **Switching modes disconnects SteamyRPC for 1-2 seconds.**
+     * Switches Steam to gamepad UI (Big Picture). Does nothing if already in that mode. **Switching modes disconnects Conductor for 1-2 seconds.**
      */
     EnterGamepadUI: {
         args: {},
         returns: {},
     },
     /**
-     * Switches Steam to desktop UI. Does nothing if already in that mode. **Switching modes disconnects SteamyRPC for 1-2 seconds.**
+     * Switches Steam to desktop UI. Does nothing if already in that mode. **Switching modes disconnects Conductor for 1-2 seconds.**
      */
     ExitGamepadUI: {
         args: {},
@@ -167,7 +167,7 @@ export type Args<T extends Command> = RpcCommands[T]["args"]
 export type Returns<T extends Command> = RpcCommands[T]["returns"]
 
 /**
- * Request sent to SteamyRPC for command `C`
+ * Request sent to Conductor for command `C`
  */
 export type RpcRequest<C extends Command> = {
     command: C,

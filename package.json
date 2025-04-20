@@ -3,7 +3,7 @@
     "esbuild": "^0.25.2"
   },
   "scripts": {
-    "build": "tsc --noEmit && esbuild payload.template.ts --bundle --minify  --outfile=out/payload.template.js",
+    "build": "tsc --noEmit && esbuild payload.template.ts --bundle --minify --outfile=out/payload.template.js",
     "dev": "esbuild payload.template.ts --bundle --outfile=out/payload.template.js && python server.py"
   }
 }

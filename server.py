@@ -113,7 +113,7 @@ def make_handler():
                             reconnecting = False
                             logger.info("Reconnected to Steam!")
                         else:
-                            logger.info("SteamyRPC initialized!")
+                            logger.info("Conductor initialized!")
 
                 elif message.startswith("init:"):
                     logger.error("Received bad init message:", message)
@@ -231,7 +231,7 @@ async def main():
 
     rpc_secret = secrets.token_urlsafe(16)
 
-    logger.info("Starting SteamyRPC...")
+    logger.info("Starting Conductor...")
 
     server = await serve(make_handler(), "", port)
 
