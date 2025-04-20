@@ -11,9 +11,8 @@
  * This file documents all of SteamyRPC's commands with their argument and return types
  */
 
-type RpcRequest = { secret: string, messageId: number } &
-    ({
-        command: 'AddShortcut',
+type RpcCommands = {
+    AddShortcut: {
         args: {
             name: string,
             exe: string,
@@ -21,55 +20,98 @@ type RpcRequest = { secret: string, messageId: number } &
             icon: string,
             startDir: string,
         },
-    } | {
-        command: 'RemoveShortcut',
+        returns: {
+            appId: number,
+        },
+    },
+    RemoveShortcut: {
         args: {
             appId: number,
         },
-    } | {
-        command: 'InstallApp',
+        returns: {},
+    },
+    InstallApp: {
         args: {
             appId: number,
         },
-    } | {
-        command: 'InstallApps',
+        returns: {},
+    },
+    InstallApps: {
         args: {
             appIds: number[],
         },
-    } | {
-        command: 'UninstallApp',
+        returns: {},
+    },
+    UninstallApp: {
         args: {
             appId: number,
             autoConfirm?: boolean | undefined,
         },
-    } | {
-        command: 'UninstallApps',
+        returns: {},
+    },
+    UninstallApps: {
         args: {
             appIds: number[],
             autoConfirm?: boolean | undefined,
         },
-    } | {
-        command: 'RunApp',
+        returns: {},
+    },
+    RunApp: {
         args: {
             appId: number,
         },
-    } | {
-        command: 'TerminateApp',
+        returns: {},
+    },
+    TerminateApp: {
         args: {
             appId: number,
         },
-    } | {
-        command: 'GetInstalledApps',
-    } | {
-        command: 'GetInstalledGames',
-    } | {
-        command: 'EnterGamepadUI',
-    } | {
-        command: 'ExitGamepadUI',
-    } | {
-        command: 'IsGamepadUI',
-    } | {
-        // make it possible to accept invalid commands but not create them
-        command: string,
-        args: never
-    })
+        returns: {},
+    },
+    GetInstalledApps: {
+        args: {},
+        returns: {
+            appIds: number[],
+        },
+    },
+    GetInstalledGames: {
+        args: {},
+        returns: {
+            appIds: number[],
+        },
+    },
+    EnterGamepadUI: {
+        args: {},
+        returns: {},
+    },
+    ExitGamepadUI: {
+        args: {},
+        returns: {},
+    },
+    IsGamepadUI: {
+        args: {},
+        returns: {
+            isGamepadUI: boolean,
+        },
+    },
+}
+
+type Command = keyof RpcCommands
+
+type Args<T extends Command> = RpcCommands[T]["args"]
+type Returns<T extends Command> = RpcCommands[T]["returns"]
+
+type RpcRequest<C extends Command> = {
+    secret: string,
+    messageId: number,
+    command: C,
+    args: Args<C>
+}
+
+type RpcResponse<C extends Command> = { success: false, error: string } | { success: true } & Returns<C>
+
+type RpcHandler<C extends Command> = (request: RpcRequest<C>) => Promise<RpcResponse<C>>
+
+export type RpcHandlers = {
+    [C in Command]: RpcHandler<C>
+}

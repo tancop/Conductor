@@ -1,7 +1,9 @@
-/**
- * Injected WebSocket instance used to communicate with the Python server
- */
-declare var rpc: WebSocket | undefined
+interface Window {
+    /**
+     * Injected WebSocket instance used to communicate with the Python server
+     */
+    rpc: WebSocket | undefined
+}
 
 /**
  * Decides if this payload should replace any previous one or leave it alone. This property gets replaced
