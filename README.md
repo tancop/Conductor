@@ -42,7 +42,7 @@ SteamyRPC will respond over the socket with a JSON object. The `success` propert
 }
 ```
 
-You can find all the supported commands in [api.d.ts](./api.d.ts). This documentation is always up to date thanks to some TypeScript magic, so you can trust it with your life (at your own risk, of course).
+You can find all the supported commands in [api.d.ts](./api.d.ts). This documentation is always up to date thanks to some TypeScript magic, so you can trust it with your life (at your own risk of course).
 
 ## Example Code
 

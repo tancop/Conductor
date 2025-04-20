@@ -262,7 +262,7 @@ async def main():
             await asyncio.sleep(1)
 
     if "webSocketDebuggerUrl" not in js_context_tab:
-        logger.critical("ERROR: SharedJSContext has no debugger URL!")
+        logger.critical("SharedJSContext has no debugger URL!")
         return
 
     debugger_url = js_context_tab["webSocketDebuggerUrl"]
