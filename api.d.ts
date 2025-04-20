@@ -8,7 +8,7 @@
  */
 
 /**
- * All supported commands with their argument and return types. This keeps documentation always in sync with the payload
+ * List of all the supported commands with their argument and return types. This is the main API documentation and source of truth for everything else.
  */
 type RpcCommands = {
     /**
