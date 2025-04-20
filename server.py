@@ -156,6 +156,20 @@ def make_handler():
                             logger.error("No command found in message")
                             continue
 
+                        if not steam_socket:
+                            logger.warning(
+                                "Received command before connecting to Steam"
+                            )
+                            await socket.send(
+                                json.dumps(
+                                    {
+                                        "success": False,
+                                        "error": "Not connected to Steam",
+                                    }
+                                )
+                            )
+                            continue
+
                         id = last_message_id
                         last_message_id += 1
 

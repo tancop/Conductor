@@ -236,3 +236,43 @@ declare namespace appStore {
      */
     function GetLocalizationForStoreTag(tagId: number): string;
 }
+
+/**
+ * Object representing a user
+ */
+interface User {
+    /**
+     * The user's SteamID64 as a base 10 number
+     */
+    strSteamID: string;
+
+    /**
+     * The user's private account name
+     */
+    strAccountName: string;
+
+    /**
+     * `true` if the user has a limited account
+     */
+    bIsLimited: boolean;
+
+    /**
+    * `true` if the user is offline
+    */
+    bIsOfflineMode: boolean;
+}
+
+/**
+ * Stores info about your account and Steam's loading state
+ */
+declare namespace App {
+    /**
+     * Returns `true` if Steam services are initialized.
+     */
+    function GetServicesInitialized(): boolean
+
+    /**
+     * Returns the current user.
+     */
+    function GetCurrentUser(): User
+}

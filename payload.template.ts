@@ -10,6 +10,7 @@
 import { RpcHandlers } from "./api"
 
 (() => {
+    console.log("ready:", App.GetServicesInitialized())
     if (window.rpc && window.rpc.readyState == WebSocket.OPEN) {
         if ($REPLACE) {
             console.log("Closing open socket");
@@ -173,6 +174,14 @@ import { RpcHandlers } from "./api"
 
     async function handleMessage(msg: { command?: string | undefined, messageId: number }) {
         if (msg.command) {
+            if (!App.GetServicesInitialized()) {
+                ws.send(JSON.stringify({
+                    messageId: msg.messageId,
+                    success: false,
+                    error: "Steam is not ready, try again later",
+                }));
+                return;
+            }
             // @ts-ignore: `handler` is the requested handler for a valid command or `undefined` for an invalid one
             let handler: ((request: typeof msg) => Promise<object>) | undefined = handlers[msg.command];
 
@@ -183,7 +192,7 @@ import { RpcHandlers } from "./api"
                             messageId: msg.messageId,
                             success: false,
                             error: `Command failed with ${reason}`,
-                        }))
+                        }));
                     });
                     ws.send(JSON.stringify({
                         messageId: msg.messageId,
