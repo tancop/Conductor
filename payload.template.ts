@@ -33,7 +33,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
                 appId,
             };
         },
@@ -42,7 +41,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
             };
         },
         InstallApp: async (msg) => {
@@ -50,7 +48,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
             };
         },
         InstallApps: async (msg) => {
@@ -58,7 +55,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
             };
         },
         UninstallApp: async (msg) => {
@@ -66,7 +62,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
             };
         },
         UninstallApps: async (msg) => {
@@ -74,7 +69,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
             };
         },
         RunApp: async (msg) => {
@@ -96,7 +90,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
             };
         },
         TerminateApp: async (msg) => {
@@ -117,7 +110,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
             };
         },
         GetInstalledApps: async (msg) => {
@@ -135,7 +127,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
                 appIds: installed,
             };
         },
@@ -153,7 +144,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
                 appIds: installed,
             };
         },
@@ -162,7 +152,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
             }
         },
         ExitGamepadUI: async (msg) => {
@@ -170,7 +159,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
             };
         },
         IsGamepadUI: async (msg) => {
@@ -178,7 +166,6 @@ import { RpcHandlers } from "./api"
 
             return {
                 success: true,
-                messageId: msg.messageId,
                 isGamepadUI: (mode === 4),
             };
         },
@@ -218,7 +205,6 @@ import { RpcHandlers } from "./api"
             }
         } else {
             ws.send(JSON.stringify({
-                messageId: msg.messageId,
                 success: false,
                 error: `Missing command`,
             }));
