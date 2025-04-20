@@ -24,6 +24,7 @@ import logging
 import sys
 
 from websockets.asyncio.server import serve
+from requests.adapters import HTTPAdapter
 
 MAX_MESSAGE_ID = 100
 MAX_PAYLOAD_TRIES = 5
@@ -92,7 +93,6 @@ async def reconnect_to_steam():
 
         except (ConnectionRefusedError, websockets.exceptions.InvalidStatus):
             # try again
-            await asyncio.sleep(1)
             tries -= 1
 
     logger.info("Connection to Steam lost, closing...")
@@ -247,7 +247,7 @@ async def main():
 
     while True:
         try:
-            res = requests.get("http://localhost:8080/json")
+            res = requests.get("http://localhost:8080/json", timeout=1)
             res.raise_for_status()
             tabs: list[dict] = res.json()
 
@@ -267,7 +267,6 @@ async def main():
 
         except requests.exceptions.ConnectionError:
             logger.info("Connection to Steam client failed, retrying...")
-            await asyncio.sleep(1)
 
     if "webSocketDebuggerUrl" not in js_context_tab:
         logger.critical("SharedJSContext has no debugger URL!")
@@ -309,6 +308,9 @@ if __name__ == "__main__":
         logger.propagate = False
 
     logger = logging.getLogger(__name__)
+
+    s = requests.Session()
+    s.mount("http://", HTTPAdapter(max_retries=False))
 
     try:
         asyncio.run(main())
