@@ -27,15 +27,28 @@ import type { RpcHandlers } from "./api";
 
 	let handlers: RpcHandlers = {
 		AddShortcut: async (msg) => {
+			if (!msg.args.exe) {
+				return {
+					success: false,
+					error: 'Missing argument "exe"',
+				};
+			}
+
 			let appId = await SteamClient.Apps.AddShortcut(
-				msg.args.name,
+				msg.args.name ?? "",
 				msg.args.exe,
-				msg.args.launchOptions.join(" "),
+				(msg.args.launchOptions ?? []).join(" "),
 				msg.args.exe,
 			);
-			SteamClient.Apps.SetShortcutName(appId, msg.args.name);
-			SteamClient.Apps.SetShortcutIcon(appId, msg.args.icon);
-			SteamClient.Apps.SetShortcutStartDir(appId, msg.args.startDir);
+			if (msg.args.name) {
+				SteamClient.Apps.SetShortcutName(appId, msg.args.name);
+			}
+			if (msg.args.icon) {
+				SteamClient.Apps.SetShortcutIcon(appId, msg.args.icon);
+			}
+			if (msg.args.startDir) {
+				SteamClient.Apps.SetShortcutStartDir(appId, msg.args.startDir);
+			}
 
 			return {
 				success: true,
@@ -43,6 +56,13 @@ import type { RpcHandlers } from "./api";
 			};
 		},
 		RemoveShortcut: async (msg) => {
+			if (!msg.args.appId) {
+				return {
+					success: false,
+					error: 'Missing argument "appId"',
+				};
+			}
+
 			SteamClient.Apps.RemoveShortcut(msg.args.appId);
 
 			return {
@@ -50,6 +70,13 @@ import type { RpcHandlers } from "./api";
 			};
 		},
 		InstallApp: async (msg) => {
+			if (!msg.args.appId) {
+				return {
+					success: false,
+					error: 'Missing argument "appId"',
+				};
+			}
+
 			SteamClient.Installs.OpenInstallWizard([msg.args.appId]);
 
 			return {
@@ -57,6 +84,13 @@ import type { RpcHandlers } from "./api";
 			};
 		},
 		InstallApps: async (msg) => {
+			if (!msg.args.appIds) {
+				return {
+					success: false,
+					error: 'Missing argument "appId"',
+				};
+			}
+
 			SteamClient.Installs.OpenInstallWizard(msg.args.appIds);
 
 			return {
@@ -64,6 +98,13 @@ import type { RpcHandlers } from "./api";
 			};
 		},
 		UninstallApp: async (msg) => {
+			if (!msg.args.appId) {
+				return {
+					success: false,
+					error: 'Missing argument "appId"',
+				};
+			}
+
 			SteamClient.Installs.OpenUninstallWizard(
 				[msg.args.appId],
 				msg.args.autoConfirm ?? false,
@@ -74,6 +115,13 @@ import type { RpcHandlers } from "./api";
 			};
 		},
 		UninstallApps: async (msg) => {
+			if (!msg.args.appIds) {
+				return {
+					success: false,
+					error: 'Missing argument "appId"',
+				};
+			}
+
 			SteamClient.Installs.OpenUninstallWizard(
 				msg.args.appIds,
 				msg.args.autoConfirm ?? false,
@@ -84,6 +132,13 @@ import type { RpcHandlers } from "./api";
 			};
 		},
 		RunApp: async (msg) => {
+			if (!msg.args.appId) {
+				return {
+					success: false,
+					error: 'Missing argument "appId"',
+				};
+			}
+
 			let apps = appStore.m_mapApps.data_;
 
 			let appEntry = apps.get(msg.args.appId);
@@ -105,6 +160,13 @@ import type { RpcHandlers } from "./api";
 			};
 		},
 		TerminateApp: async (msg) => {
+			if (!msg.args.appId) {
+				return {
+					success: false,
+					error: 'Missing argument "appId"',
+				};
+			}
+
 			let apps = appStore.m_mapApps.data_;
 
 			let appEntry = apps.get(msg.args.appId);
@@ -124,7 +186,7 @@ import type { RpcHandlers } from "./api";
 				success: true,
 			};
 		},
-		GetInstalledApps: async (msg) => {
+		GetInstalledApps: async () => {
 			let apps = appStore.m_mapApps.data_;
 
 			// collect ids where the associated game is installed
@@ -140,7 +202,7 @@ import type { RpcHandlers } from "./api";
 				appIds: installed,
 			};
 		},
-		GetInstalledGames: async (msg) => {
+		GetInstalledGames: async () => {
 			let apps = appStore.m_mapApps.data_;
 
 			let installed = [...apps.entries()].reduce((arr, [id, game]) => {
@@ -156,14 +218,28 @@ import type { RpcHandlers } from "./api";
 			};
 		},
 		SetUIMode: async (msg) => {
+			if (!msg.args.mode) {
+				return {
+					success: false,
+					error: 'Missing argument "mode"',
+				};
+			}
+
 			SteamClient.UI.SetUIMode(msg.args.mode);
 
 			return { success: true };
 		},
-		GetUIMode: async (msg) => {
+		GetUIMode: async () => {
 			return { success: true, mode: await SteamClient.UI.GetUIMode() };
 		},
 		GetAppInfo: async (msg) => {
+			if (!msg.args.appId) {
+				return {
+					success: false,
+					error: 'Missing argument "appId"',
+				};
+			}
+
 			let appEntry = appStore.m_mapApps.data_.get(msg.args.appId);
 
 			if (!appEntry) {

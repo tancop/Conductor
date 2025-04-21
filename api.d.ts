@@ -16,16 +16,16 @@ type RpcCommands = {
 	 */
 	AddShortcut: {
 		args: {
-			/** game title */
-			name: string;
+			/** game title (default: exe name without extension) */
+			name?: string;
 			/** path to the game executable */
 			exe: string;
-			/** launch options for the game */
-			launchOptions: string[];
-			/** path to the game icon (.jpg, .png, .exe, .bmp) */
-			icon: string;
-			/** path to starting folder */
-			startDir: string;
+			/** launch options for the game (default: []) */
+			launchOptions?: string[];
+			/** path to the game icon (.jpg, .png, .exe or .bmp, default: game exe) */
+			icon?: string;
+			/** path to starting folder (default: the exe's parent folder) */
+			startDir?: string;
 		};
 		returns: {
 			/** generated app ID */
@@ -70,7 +70,7 @@ type RpcCommands = {
 			/** app ID to remove */
 			appId: number;
 			/** uninstall without asking? */
-			autoConfirm?: boolean | undefined;
+			autoConfirm?: boolean;
 		};
 		returns: {};
 	};
@@ -82,7 +82,7 @@ type RpcCommands = {
 			/** app ID to remove */
 			appIds: number[];
 			/** uninstall without asking? */
-			autoConfirm?: boolean | undefined;
+			autoConfirm?: boolean;
 		};
 		returns: {};
 	};
@@ -178,7 +178,7 @@ export type Returns<T extends Command> = RpcCommands[T]["returns"];
  */
 export type RpcRequest<C extends Command> = {
 	command: C;
-	args: Args<C>;
+	args: Partial<Args<C>>;
 };
 
 /**
