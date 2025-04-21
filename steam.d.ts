@@ -151,7 +151,7 @@ declare namespace SteamClient {
 		/**
 		 * Returns Steam's current UI mode.
 		 */
-		function GetUIMode(): UIMode;
+		function GetUIMode(): Promise<UIMode>;
 	}
 }
 

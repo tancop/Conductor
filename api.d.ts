@@ -127,27 +127,23 @@ type RpcCommands = {
 		};
 	};
 	/**
-	 * Switches Steam to gamepad UI (Big Picture). Does nothing if already in that mode. **Switching modes disconnects Conductor for 1-2 seconds.**
+	 * Sets Steam's UI mode. **This will disconnect Conductor for 1-2 seconds** if the mode changes.
 	 */
-	EnterGamepadUI: {
-		args: {};
+	SetUIMode: {
+		args: {
+			/** new UI mode */
+			mode: UIMode;
+		};
 		returns: {};
 	};
 	/**
-	 * Switches Steam to desktop UI. Does nothing if already in that mode. **Switching modes disconnects Conductor for 1-2 seconds.**
+	 * Returns Steam's UI mode.
 	 */
-	ExitGamepadUI: {
-		args: {};
-		returns: {};
-	};
-	/**
-	 * Checks if Steam is in gamepad UI.
-	 */
-	IsGamepadUI: {
+	GetUIMode: {
 		args: {};
 		returns: {
-			/** `true` if Steam is in gamepad UI, `false` if not */
-			isGamepadUI: boolean;
+			/** current UI mode */
+			mode: UIMode;
 		};
 	};
 };

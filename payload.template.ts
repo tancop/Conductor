@@ -155,27 +155,13 @@ import type { RpcHandlers } from "./api";
 				appIds: installed,
 			};
 		},
-		EnterGamepadUI: async (msg) => {
-			SteamClient.UI.SetUIMode(UIMode.Gamepad);
+		SetUIMode: async (msg) => {
+			SteamClient.UI.SetUIMode(msg.args.mode);
 
-			return {
-				success: true,
-			};
+			return { success: true };
 		},
-		ExitGamepadUI: async (msg) => {
-			SteamClient.UI.SetUIMode(UIMode.Desktop);
-
-			return {
-				success: true,
-			};
-		},
-		IsGamepadUI: async (msg) => {
-			let mode = SteamClient.UI.GetUIMode();
-
-			return {
-				success: true,
-				isGamepadUI: mode === 4,
-			};
+		GetUIMode: async (msg) => {
+			return { success: true, mode: await SteamClient.UI.GetUIMode() };
 		},
 	};
 
