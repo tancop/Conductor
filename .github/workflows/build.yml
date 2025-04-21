@@ -24,7 +24,8 @@ jobs:
       uses: astral-sh/setup-uv@v5.4.2
 
     - run: |
-        bun run build --if-present
+        bun install
+        bun run build
         
         whl_file=$(find dist/ -name "*.whl" -print -quit)
         base_name=$(echo "${whl_file}" | cut -d"." -f 2)
