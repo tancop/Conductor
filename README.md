@@ -9,10 +9,9 @@ Conductor lets you automate Steam from your browser or over the network. Install
 
 ## 💽 Installing
 
-1. Install Python
-2. Install the [`websockets`](https://pypi.org/project/websockets/) package
-3. Download a release zip and unpack anywhere you want
-4. Run Conductor. That's it.
+1. Install Python with the [`websockets`](https://pypi.org/project/websockets/) and [`requests`](https://pypi.org/project/requests/) packages
+2. Download a release zip and unpack anywhere you want
+3. Run Conductor. That's it.
 
 ## ⚡ Running
 
@@ -44,7 +43,7 @@ You can find all the supported commands in [api.d.ts](./api.d.ts). This document
 
 ## 🛠️ Building
 
-1. Install a package manager like [Bun](https://bun.sh), [pnpm](https://pnpm.io) or [npm](https://nodejs.org)
+1. Install [uv](https://astral.sh/uv) and a JS package manager like [Bun](https://bun.sh), [pnpm](https://pnpm.io) or [npm](https://nodejs.org)
 2. Clone the repo or download source code as a zip
 3. Build and run with `bun run dev` or type check and build for production with `bun run build`. Replace `bun` with your package manager if you're using a different one
 

@@ -1,13 +1,5 @@
 #!/usr/bin/env python
 
-# /// script
-# requires-python = ">=3.10"
-# dependencies = [
-#     "websockets~=15.0.1",
-#     "requests~=2.32.3",
-# ]
-# ///
-
 # server.py
 # (c) 2025 Teodor Potancok
 

@@ -3,4 +3,4 @@ if [ ! -f "~/.steam/steam/.cef-enable-remote-debugging"]; then
     touch "~/.steam/steam/.cef-enable-remote-debugging"
 fi
 
-python ./server.py
+python ./main.py
