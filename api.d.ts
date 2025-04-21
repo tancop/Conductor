@@ -146,6 +146,17 @@ type RpcCommands = {
 			mode: UIMode;
 		};
 	};
+	GetAppInfo: {
+		args: {
+			appId: number;
+		};
+		returns: {
+			type: AppType;
+			installed: boolean;
+			displayName: string;
+			storeTags: number[];
+		};
+	};
 };
 
 /**

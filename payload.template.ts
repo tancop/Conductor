@@ -163,6 +163,27 @@ import type { RpcHandlers } from "./api";
 		GetUIMode: async (msg) => {
 			return { success: true, mode: await SteamClient.UI.GetUIMode() };
 		},
+		GetAppInfo: async (msg) => {
+			let appEntry = appStore.m_mapApps.data_.get(msg.args.appId);
+
+			if (!appEntry) {
+				return {
+					success: false,
+					error: `App with ID ${msg.args.appId} not found in library`,
+				};
+			}
+
+			let app = appEntry.value_;
+
+			return {
+				success: true,
+
+				type: app.app_type,
+				installed: app.installed ?? false,
+				displayName: app.display_name,
+				storeTags: app.store_tag,
+			};
+		},
 	};
 
 	async function handleMessage(msg: {
