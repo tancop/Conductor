@@ -141,14 +141,22 @@ type RpcCommands = {
 			mode: UIMode;
 		};
 	};
+	/**
+	 * Returns info about an app in your library.
+	 */
 	GetAppInfo: {
 		args: {
+			/** the app ID you're looking for */
 			appId: number;
 		};
 		returns: {
+			/** the app's type (game, software, tools...) */
 			type: AppType;
+			/** is installed on this device? */
 			installed: boolean;
+			/** app display name */
 			displayName: string;
+			/** the app's store tags */
 			storeTags: number[];
 		};
 	};
