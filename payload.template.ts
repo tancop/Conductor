@@ -259,6 +259,28 @@ import type { RpcHandlers } from "./api";
 				storeTags: app.store_tag,
 			};
 		},
+		GetTagName: async (msg) => {
+			if (!msg.args.tagId) {
+				return {
+					success: false,
+					error: 'Missing argument "tagId"',
+				};
+			}
+
+			return {
+				success: true,
+				name: appStore.GetLocalizationForStoreTag(msg.args.tagId),
+			};
+		},
+		GetTagNames: async (msg) => {
+			return {
+				success: true,
+				names:
+					msg.args.tagIds?.map((id) =>
+						appStore.GetLocalizationForStoreTag(id),
+					) ?? [],
+			};
+		},
 	};
 
 	async function handleMessage(msg: {

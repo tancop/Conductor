@@ -160,6 +160,32 @@ type RpcCommands = {
 			storeTags: number[];
 		};
 	};
+	/**
+	 * Returns the localized name of a store tag.
+	 */
+	GetTagName: {
+		args: {
+			/** the tag's ID */
+			tagId: number;
+		};
+		returns: {
+			/** the tag's name */
+			name: string;
+		};
+	};
+	/**
+	 * Returns the localized names for a list of store tags.
+	 */
+	GetTagNames: {
+		args: {
+			/** the tag IDs */
+			tagIds: number[];
+		};
+		returns: {
+			/** names for each ID */
+			names: string[];
+		};
+	};
 };
 
 /**
