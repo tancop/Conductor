@@ -23,34 +23,61 @@ jobs:
     - name: Setup UV
       uses: astral-sh/setup-uv@v5.4.2
 
-    - run: |
+    - name: Prepare artifacts
+      run: |
+        echo "Building Conductor"
+        
         bun install
         bun run build
-        
-        whl_file=$(find dist/ -name "*.whl" -print -quit)
-        base_name=$(echo "${whl_file}" | cut -d"." -f 2)
 
-        unzip "${whl_file}" -d temp
-        
-        dist_info=$(find temp/ -name "*.dist-info" -print -quit)
-        rm -fr "temp/${dist_info}"
+        cd dist
 
-        zip -r "${base_name}.zip" temp/
+        # Remove .whl extension
+        whl_file=$(find . -name "*.whl" -print -quit)
+        whl_base_name="$(echo ${whl_file%.*} | cut -c 3-)"
+
+        # Remove .tar.gz extension
+        src_file=$(find . -name "*.tar.gz" -print -quit)
+        without_gz="${src_file%.*}"
+        src_base_name="$(echo ${without_gz%.*} | cut -c 3-)"
+
+        cd ..
+
+        home_prefix="$(echo $PWD)"
+
+        # Unzip wheel to temp folder
+        echo "Unzipping wheel to temp/"
+        unzip "dist/${whl_file}" -d temp
+        cd temp
+
+        # Remove wheel metadata
+        echo "Removing wheel metadata at temp/${src_base_name}.dist-info/"
+        rm -fr "${src_base_name}.dist-info/"
+
+        # Export archive names
+        echo "Exporting archive names"
+        echo "WHEEL_PATH=${home_prefix}/dist/${whl_base_name}.whl" >> "$GITHUB_ENV"
+        echo "SDIST_PATH=${home_prefix}/dist/${src_base_name}.tar.gz" >> "$GITHUB_ENV"
+        echo "RELEASE_PATH=${home_prefix}/temp" >> "$GITHUB_ENV"
+
+        commit=$(echo "$GITHUB_SHA" | cut -c 1-7)
+
+        echo "RELEASE_NAME=${src_base_name}-${commit}" >> "$GITHUB_ENV"
 
     - name: Upload release zip
       uses: actions/upload-artifact@v4.6.2
       with:
-        name: release
-        path: "*.zip"
+        name: "${{ env.RELEASE_NAME }}-release"
+        path: "${{ env.RELEASE_PATH }}"
 
     - name: Upload source archive
       uses: actions/upload-artifact@v4.6.2
       with:
-        name: sdist
-        path: "dist/*.tar.gz"
+        name: "${{ env.RELEASE_NAME }}-sdist"
+        path: "${{ env.SDIST_PATH }}"
 
     - name: Upload Python wheel
       uses: actions/upload-artifact@v4.6.2
       with:
-        name: wheel
-        path: "dist/*.whl"
+        name: "${{ env.RELEASE_NAME }}-wheel"
+        path: "${{ env.WHEEL_PATH }}"
