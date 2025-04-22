@@ -9,6 +9,10 @@
 
 import asyncio
 import json
+import os
+from pathlib import Path
+import signal
+import tempfile
 import requests
 import websockets
 import secrets
@@ -237,11 +241,32 @@ async def send_payload(debugger_url: str, payload: str):
         await ws.send(json.dumps(command))
 
 
+def kill_previous_instances():
+    pid_file = Path(tempfile.gettempdir()).joinpath("conductor.pid")
+
+    if pid_file.exists():
+        try:
+            with open(pid_file, "r") as f:
+                old_pid = int(f.read())
+            os.kill(old_pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+    with open(pid_file, "w") as f:
+        f.write(str(os.getpid()))
+
+    import atexit
+
+    atexit.register(lambda: pid_file.unlink(missing_ok=True))
+
+
 async def main():
     global debugger_url
     global server
     global rpc_secret
     global closing
+
+    kill_previous_instances()
 
     rpc_secret = secrets.token_urlsafe(16)
 
