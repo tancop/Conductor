@@ -41,6 +41,11 @@ jobs:
         without_gz="${src_file%.*}"
         src_base_name="$(echo ${without_gz%.*} | cut -c 3-)"
 
+        # Set modify time
+        echo "Setting file modify time"
+        TZ=UTC touch -d "2020-02-02 02:00" $whl_file
+        TZ=UTC touch -d "2020-02-02 02:00" $src_file
+
         cd ..
 
         home_prefix="$(echo $PWD)"
