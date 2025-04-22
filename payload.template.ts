@@ -25,6 +25,23 @@ import type { RpcHandlers } from "./api";
 
 	let ws = new WebSocket("ws://localhost:$PORT");
 
+	function getFields<T, K extends (keyof T)[]>(
+		obj: T,
+		fields: K | undefined,
+	): Pick<T, K[number]> {
+		if (!fields) {
+			return obj;
+		}
+
+		let filtered: Partial<Pick<T, K[number]>> = {};
+
+		for (const key of fields) {
+			filtered[key] = obj[key];
+		}
+
+		return filtered as Pick<T, K[number]>;
+	}
+
 	let handlers: RpcHandlers = {
 		AddShortcut: async (msg) => {
 			if (!msg.args.exe) {
@@ -279,6 +296,31 @@ import type { RpcHandlers } from "./api";
 					msg.args.tagIds?.map((id) =>
 						appStore.GetLocalizationForStoreTag(id),
 					) ?? [],
+			};
+		},
+		GetLibraryFolders: async (msg) => {
+			let steamFolders = await SteamClient.InstallFolder.GetInstallFolders();
+
+			let folders = steamFolders.map((folder) =>
+				getFields(
+					{
+						isDefault: folder.bIsDefaultFolder,
+						isRemovable: !folder.bIsFixed,
+						isMounted: folder.bIsMounted,
+						freeSpace: folder.nFreeSpace,
+						spaceUsedBySteam: folder.nUsedSize,
+						totalCapacity: folder.nCapacity,
+						driveName: folder.strDriveName,
+						folderPath: folder.strFolderPath,
+						userLabel: folder.strUserLabel,
+					},
+					msg.args.fields,
+				),
+			);
+
+			return {
+				success: true,
+				folders,
 			};
 		},
 	};

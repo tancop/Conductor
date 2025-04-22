@@ -186,7 +186,27 @@ type RpcCommands = {
 			names: string[];
 		};
 	};
+	GetLibraryFolders: {
+		args: {
+			fields?: (keyof LibraryFolder)[];
+		};
+		returns: {
+			folders: LibraryFolder[];
+		};
+	};
 };
+
+interface LibraryFolder {
+	isDefault: boolean;
+	isRemovable: boolean;
+	isMounted: boolean;
+	freeSpace: number;
+	spaceUsedBySteam: number;
+	totalCapacity: number;
+	driveName: string;
+	folderPath: string;
+	userLabel: string;
+}
 
 /**
  * Union of all supported commands

@@ -31,6 +31,56 @@ declare enum UIMode {
 }
 
 /**
+ * Represents a Steam library folder. There can only be one folder for each mounted drive.
+ */
+interface InstallFolder {
+	/**
+	 * `true` if this is the default folder
+	 */
+	bIsDefaultFolder: boolean;
+
+	/**
+	 * `true` if the folder on a fixed (non removable) drive
+	 */
+	bIsFixed: boolean;
+
+	/**
+	 * `true` if the folder's drive is mounted
+	 */
+	bIsMounted: boolean;
+
+	/**
+	 * Amount of storage used by Steam, in bytes
+	 */
+	nUsedSize: number;
+
+	/**
+	 * Total capacity of the drive, in bytes
+	 */
+	nCapacity: number;
+
+	/**
+	 * Free space on the drive, in bytes
+	 */
+	nFreeSpace: number;
+
+	/**
+	 * The drive's name (this is a drive letter like "C:"" on Windows)
+	 */
+	strDriveName: string;
+
+	/**
+	 * Path to the library folder like "C:\Program Files (x86)\Steam"
+	 */
+	strFolderPath: string;
+
+	/**
+	 * User label for the folder, empty string if there's no label set
+	 */
+	strUserLabel: string;
+}
+
+/**
  * Namespace for global functions that call into Steam's native code
  */
 declare namespace SteamClient {
@@ -113,6 +163,35 @@ declare namespace SteamClient {
 		 * @param appId the shortcut's ID
 		 */
 		function RemoveShortcut(appId: number): void;
+	}
+
+	/**
+	 * Functions for managing install folders
+	 */
+	namespace InstallFolder {
+		/**
+		 * Returns info about all the install folders on this device.
+		 */
+		function GetInstallFolders(): Promise<InstallFolder[]>;
+
+		/**
+		 * Opens the `steamapps` for a library folder in your default file manager.
+		 *
+		 * @param folderIdx index of the folder to open
+		 */
+		function BrowseFilesInFolder(folderIdx: number): void;
+
+		/**
+		 * Moves an installed app to a different library folder. This doesn't move the app right away,
+		 * just add a move operation to the update queue.
+		 *
+		 * @param appId the moved app's ID
+		 * @param folderIdx the target folder's index
+		 */
+		function MoveInstallFolderForApp(
+			appId: number,
+			folderIdx: number,
+		): Promise<number>;
 	}
 
 	/**
