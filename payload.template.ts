@@ -186,6 +186,12 @@ import type { RpcHandlers } from "./api";
 				success: true,
 			};
 		},
+		GetLibraryApps: async () => {
+			return {
+				success: true,
+				appIds: appStore.allApps.map((app) => app.appid),
+			};
+		},
 		GetInstalledApps: async () => {
 			let apps = appStore.m_mapApps.data_;
 

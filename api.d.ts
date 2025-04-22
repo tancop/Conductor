@@ -107,6 +107,16 @@ type RpcCommands = {
 		returns: {};
 	};
 	/**
+	 * Returns the IDs of all the apps in your Steam library.
+	 */
+	GetLibraryApps: {
+		args: {};
+		returns: {
+			/** library app IDs */
+			appIds: number[];
+		};
+	};
+	/**
 	 * Returns the IDs of all installed apps including shortcuts.
 	 */
 	GetInstalledApps: {
