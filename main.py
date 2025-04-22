@@ -249,7 +249,7 @@ def kill_previous_instances():
             with open(pid_file, "r") as f:
                 old_pid = int(f.read())
             os.kill(old_pid, signal.SIGTERM)
-        except (ProcessLookupError, PermissionError):
+        except (ProcessLookupError, PermissionError, OSError):
             pass
 
     with open(pid_file, "w") as f:
