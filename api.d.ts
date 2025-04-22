@@ -107,32 +107,17 @@ type RpcCommands = {
 		returns: {};
 	};
 	/**
-	 * Returns the IDs of all the apps in your Steam library.
+	 * Returns the IDs for all the apps in your Steam library that match the filters.
 	 */
-	GetLibraryApps: {
-		args: {};
+	GetApps: {
+		args: {
+			/** app types to include in the results (default: all types) */
+			typeFilter?: AppType[];
+			/** only return apps installed on this device (default: false) */
+			installedOnly: boolean;
+		};
 		returns: {
 			/** library app IDs */
-			appIds: number[];
-		};
-	};
-	/**
-	 * Returns the IDs of all installed apps including shortcuts.
-	 */
-	GetInstalledApps: {
-		args: {};
-		returns: {
-			/** installed app IDs */
-			appIds: number[];
-		};
-	};
-	/**
-	 * Returns the IDs of all installed Steam games.
-	 */
-	GetInstalledGames: {
-		args: {};
-		returns: {
-			/** installed game IDs */
 			appIds: number[];
 		};
 	};

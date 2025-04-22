@@ -186,41 +186,34 @@ import type { RpcHandlers } from "./api";
 				success: true,
 			};
 		},
-		GetLibraryApps: async () => {
+		GetApps: async (msg) => {
+			if (msg.args.typeFilter) {
+				let filter = new Set(msg.args.typeFilter);
+
+				return {
+					success: true,
+					appIds: appStore.allApps
+						.filter(
+							(app) =>
+								filter.has(app.app_type) &&
+								(!msg.args.installedOnly || app.installed),
+						)
+						.map((app) => app.appid),
+				};
+			}
+
+			if (msg.args.installedOnly) {
+				return {
+					success: true,
+					appIds: appStore.allApps
+						.filter((app) => app.installed)
+						.map((app) => app.appid),
+				};
+			}
+
 			return {
 				success: true,
 				appIds: appStore.allApps.map((app) => app.appid),
-			};
-		},
-		GetInstalledApps: async () => {
-			let apps = appStore.m_mapApps.data_;
-
-			// collect ids where the associated game is installed
-			let installed = [...apps.entries()].reduce((arr, [id, game]) => {
-				if (game.value_.installed) {
-					arr.push(id);
-				}
-				return arr;
-			}, [] as number[]);
-
-			return {
-				success: true,
-				appIds: installed,
-			};
-		},
-		GetInstalledGames: async () => {
-			let apps = appStore.m_mapApps.data_;
-
-			let installed = [...apps.entries()].reduce((arr, [id, game]) => {
-				if (game.value_.installed && game.value_.app_type === AppType.Game) {
-					arr.push(id);
-				}
-				return arr;
-			}, [] as number[]);
-
-			return {
-				success: true,
-				appIds: installed,
 			};
 		},
 		SetUIMode: async (msg) => {
