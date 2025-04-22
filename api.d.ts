@@ -9,6 +9,21 @@
 
 /**
  * List of all the supported commands with their argument and return types. This is the main API documentation and source of truth for everything else.
+ *
+ * Commands with a `fields` argument support output filtering like this:
+ *
+ * ```typescript
+ * {
+ *     fields: ['driveName', 'userLabel'],
+ * }
+ *
+ * // returns:
+ *
+ * [
+ *     { driveName: 'C:', userLabel: 'main', },
+ * ]
+ *
+ * ```
  */
 type RpcCommands = {
 	/**
@@ -186,12 +201,17 @@ type RpcCommands = {
 			names: string[];
 		};
 	};
+	/**
+	 * Returns info about library folders on this device.
+	 */
 	GetLibraryFolders: {
 		args: {
+			/** filter used to pick some fields (default: all fields) */
 			fields?: (keyof LibraryFolder)[];
 		};
 		returns: {
-			folders: LibraryFolder[];
+			/** filtered data for every folder */
+			folders: Partial<LibraryFolder[]>;
 		};
 	};
 };
