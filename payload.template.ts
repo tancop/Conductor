@@ -304,6 +304,7 @@ import type { RpcHandlers } from "./api";
 			let folders = steamFolders.map((folder) =>
 				getFields(
 					{
+						index: folder.nFolderIndex,
 						isDefault: folder.bIsDefaultFolder,
 						isRemovable: !folder.bIsFixed,
 						isMounted: folder.bIsMounted,

@@ -217,6 +217,7 @@ type RpcCommands = {
 };
 
 interface LibraryFolder {
+	index: number;
 	isDefault: boolean;
 	isRemovable: boolean;
 	isMounted: boolean;

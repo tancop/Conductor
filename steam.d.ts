@@ -35,6 +35,10 @@ declare enum UIMode {
  */
 interface InstallFolder {
 	/**
+	 * Index of this folder in the list
+	 */
+	nFolderIndex: number;
+	/**
 	 * `true` if this is the default folder
 	 */
 	bIsDefaultFolder: boolean;
