@@ -11,7 +11,8 @@ Conductor lets you automate Steam from your browser or over the network. Install
 
 1. Install Python with the [`websockets`](https://pypi.org/project/websockets/) and [`requests`](https://pypi.org/project/requests/) packages
 2. Download a release zip and unpack anywhere you want
-3. Run Conductor. That's it.
+3. Run Conductor
+4. Restart Steam if it's running
 
 ## ⚡ Running
 
@@ -23,10 +24,10 @@ You can connect to the server at `ws://[your ip]:7355`. Requests should be JSON 
 
 ```json
 {
-    "command": "RunApp",
-    "args": {
-        "appId": 730
-    }
+  "command": "RunApp",
+  "args": {
+    "appId": 730
+  }
 }
 ```
 
@@ -34,8 +35,8 @@ Conductor will respond over the socket with a JSON object. The `success` propert
 
 ```json
 {
-    "success": true,
-    "appIds": [730, 1245620, 2767030]
+  "success": true,
+  "appIds": [730, 1245620, 2767030]
 }
 ```
 
@@ -52,16 +53,18 @@ You can find all the supported commands in [api.d.ts](./api.d.ts). This document
 If Counter-Strike 2 is installed, this opens it and prints `{"success": true}` to the console. If it's not, prints `{"success": false, "error": "App with ID 730 not installed"}`
 
 ```javascript
-let ws = new WebSocket('ws://localhost:7355');
+let ws = new WebSocket("ws://localhost:7355");
 
-ws.addEventListener('message', (event) => console.log(event.data));
+ws.addEventListener("message", (event) => console.log(event.data));
 
-ws.addEventListener('open', () => {
-    ws.send(JSON.stringify({
-        command: 'RunApp',
-        args: {
-            appId: 730
-        }
-    }));
+ws.addEventListener("open", () => {
+  ws.send(
+    JSON.stringify({
+      command: "RunApp",
+      args: {
+        appId: 730,
+      },
+    }),
+  );
 });
 ```
