@@ -270,6 +270,8 @@ async def main():
 
     kill_previous_instances()
 
+    await asyncio.sleep(0.1)
+
     rpc_secret = secrets.token_urlsafe(16)
 
     logger.info("Starting Conductor...")
