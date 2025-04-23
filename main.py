@@ -119,7 +119,7 @@ def make_handler():
                         else:
                             logger.info("Conductor initialized!")
 
-                elif message.startswith("init:"):
+                elif str(message).startswith("init:"):
                     logger.error("Received bad init message:", message)
                 else:
                     if socket == steam_socket:
@@ -226,6 +226,7 @@ def make_payload(port: int, rpc_secret: str, replace: bool):
     except FileNotFoundError:
         logger.critical("Payload file not found!")
         server.close()
+        return ""
 
 
 async def send_payload(debugger_url: str, payload: str):
@@ -274,7 +275,7 @@ async def main():
 
     server = await serve(make_handler(), "", port)
 
-    js_context_tab = None
+    js_context_tab: dict[str, str] = {}
 
     while True:
         try:
