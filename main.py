@@ -90,6 +90,7 @@ async def reconnect_to_steam():
         except (ConnectionRefusedError, websockets.exceptions.InvalidStatus):
             # try again
             tries -= 1
+            await asyncio.sleep(0.5)
 
     logger.info("Connection to Steam lost, closing...")
 
@@ -299,6 +300,7 @@ async def main():
 
         except requests.exceptions.ConnectionError:
             logger.info("Connection to Steam client failed, retrying...")
+            await asyncio.sleep(0.5)
 
     if "webSocketDebuggerUrl" not in js_context_tab:
         logger.critical("SharedJSContext has no debugger URL!")
@@ -342,7 +344,7 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
 
     s = requests.Session()
-    s.mount("http://", HTTPAdapter(max_retries=False))
+    s.mount("http://", HTTPAdapter(max_retries=0))
 
     try:
         asyncio.run(main())
