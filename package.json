@@ -1,15 +1,13 @@
 {
-  "dependencies": {
-    "esbuild": "^0.25.2"
-  },
-  "scripts": {
-    "build": "tsc --noEmit && esbuild payload.template.ts --bundle --minify --outfile=out/payload.template.js && uv build",
-    "dev": "esbuild payload.template.ts --bundle --outfile=out/payload.template.js && uv run main.py"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^1.9.4"
-  },
-  "trustedDependencies": [
-    "@biomejs/biome"
-  ]
+	"dependencies": {
+		"esbuild": "^0.25.2"
+	},
+	"scripts": {
+		"build": "tsc --noEmit && esbuild payload.template.ts --bundle --minify --outfile=out/payload.template.js && uv build",
+		"dev": "esbuild payload.template.ts --bundle --outfile=out/payload.template.js && uv run main.py"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4"
+	},
+	"trustedDependencies": ["@biomejs/biome"]
 }

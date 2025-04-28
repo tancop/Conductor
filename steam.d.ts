@@ -216,7 +216,10 @@ declare namespace SteamClient {
 		 * @param appIds app IDs to remove
 		 * @param autoConfirm uninstall without asking the user?
 		 */
-		function OpenUninstallWizard(appIds: number[], autoConfirm: boolean): void;
+		function OpenUninstallWizard(
+			appIds: number[],
+			autoConfirm: boolean,
+		): void;
 	}
 
 	/**
