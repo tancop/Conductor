@@ -42,6 +42,26 @@ Conductor will respond over the socket with a JSON object. The `success` propert
 
 You can find all the supported commands in [api.d.ts](./api.d.ts). This documentation is always up to date thanks to some TypeScript magic, so you can trust it with your life (at your own risk of course).
 
+## 🔒 Authentication
+
+You can control access to Conductor by creating a file named `secrets.json` next to `main.py`. Put your API secrets in it like this:
+
+```json
+["qyHY9btYEm+6zby4KdGfDQ==", "vkn0CpLHzMwbUAfmJgiGTA=="]
+```
+
+If you set any secrets every request needs a `secret` field. Commands with no secret or an invalid value will get rejected.
+
+```json
+{
+  "command": "RunApp",
+  "args": {
+    "appId": 730
+  },
+  "secret": "qyHY9btYEm+6zby4KdGfDQ=="
+}
+```
+
 ## 🛠️ Building
 
 1. Install [uv](https://astral.sh/uv) and a JS package manager like [Bun](https://bun.sh), [pnpm](https://pnpm.io) or [npm](https://nodejs.org)
@@ -50,7 +70,7 @@ You can find all the supported commands in [api.d.ts](./api.d.ts). This document
 
 ## 💻 Example Code
 
-If Counter-Strike 2 is installed, this opens it and prints `{"success": true}` to the console. If it's not, prints `{"success": false, "error": "App with ID 730 not installed"}`
+Run this in your browser console. If Counter-Strike 2 is installed, this opens it and prints `{"success": true}` to the console. If it's not, prints `{"success": false, "error": "App with ID 730 not installed"}`
 
 ```javascript
 let ws = new WebSocket("ws://localhost:7355");

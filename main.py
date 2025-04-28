@@ -42,6 +42,8 @@ server: websockets.Server
 
 logger: logging.Logger
 
+api_secrets: list[str] = []
+
 
 class DowngradeInfoFilter(logging.Filter):
     def filter(self, record: logging.LogRecord):
@@ -138,7 +140,7 @@ def make_handler():
                             msg.pop("messageId", None)
                             try:
                                 await client.send(json.dumps(msg))
-                                logger.debug("Sent response to client:", msg)
+                                logger.debug("Sent response to client: %s" % msg)
                             except websockets.exceptions.ConnectionClosed:
                                 logger.warning("Connection to client lost")
                     else:
@@ -146,12 +148,57 @@ def make_handler():
                         try:
                             msg = json.loads(message)
                         except json.JSONDecodeError:
-                            logger.error("Received invalid JSON from client:", message)
+                            logger.warning(
+                                "Received invalid JSON from client: %s" % message
+                            )
+                            await socket.send(
+                                json.dumps(
+                                    {
+                                        "success": False,
+                                        "error": "Message is not valid JSON",
+                                    }
+                                )
+                            )
                             continue
 
                         if "command" not in msg:
                             logger.error("No command found in message")
+                            await socket.send(
+                                json.dumps(
+                                    {
+                                        "success": False,
+                                        "error": "No command found",
+                                    }
+                                )
+                            )
                             continue
+
+                        if len(api_secrets) > 0:
+                            # authentication enabled
+                            if "secret" not in msg:
+                                logger.warning(
+                                    "Received client message without a secret"
+                                )
+                                await socket.send(
+                                    json.dumps(
+                                        {
+                                            "success": False,
+                                            "error": "A secret is required!",
+                                        }
+                                    )
+                                )
+                                continue
+                            if msg["secret"] not in api_secrets:
+                                logger.warning("Client sent invalid secret")
+                                await socket.send(
+                                    json.dumps(
+                                        {
+                                            "success": False,
+                                            "error": "Invalid secret! Are you a hacker?",
+                                        }
+                                    )
+                                )
+                                continue
 
                         if not steam_socket:
                             logger.warning(
@@ -267,6 +314,7 @@ async def main():
     global server
     global rpc_secret
     global closing
+    global api_secrets
 
     kill_previous_instances()
 
@@ -275,6 +323,18 @@ async def main():
     rpc_secret = secrets.token_urlsafe(16)
 
     logger.info("Starting Conductor...")
+
+    try:
+        with open("secrets.json") as f:
+            try:
+                api_secrets = json.load(f)
+                logger.info("Found secrets.json, turning on authentication")
+            except json.JSONDecodeError:
+                logger.warning("secrets.json is not valid JSON")
+            except UnicodeDecodeError:
+                logger.warning("secrets.json is not valid Unicode")
+    except OSError:
+        logger.info("secrets.json not found, turning off authentication")
 
     server = await serve(make_handler(), "", port)
 
