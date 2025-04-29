@@ -238,17 +238,25 @@ export type Command = keyof RpcCommands;
  * Arguments for a command
  */
 export type Args<T extends Command> = RpcCommands[T]["args"];
+
 /**
  * Return values for a command
  */
 export type Returns<T extends Command> = RpcCommands[T]["returns"];
 
 /**
- * Request sent to Conductor for command `C`
+ * Internal request sent to Steam for command `C`
  */
-export type RpcRequest<C extends Command> = {
+type SteamRequest<C extends Command> = {
 	command: C;
 	args: Partial<Args<C>>;
+};
+
+/**
+ * Request sent to Conductor by a client
+ */
+export type RpcRequest<C extends Command> = SteamRequest<C> & {
+	secret?: string;
 };
 
 /**
@@ -261,8 +269,8 @@ export type RpcResponse<C extends Command> =
 /**
  * Internal handler for command `C`
  */
-export type RpcHandler<C extends Command> = (
-	request: RpcRequest<C>,
+type RpcHandler<C extends Command> = (
+	request: SteamRequest<C>,
 ) => Promise<RpcResponse<C>>;
 
 /**
