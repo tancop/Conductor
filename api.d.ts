@@ -253,18 +253,19 @@ export type RpcRequest<C extends Command> = {
 };
 
 /**
- * Request sent by a client with an optional secret
+ * Request sent by a client with an optional secret and message ID
  */
 export type ClientRequest<C extends Command> = RpcRequest<C> & {
 	secret?: string;
+	messageId?: number;
 };
 
 /**
  * Response returned to the client for command `C`
  */
 export type RpcResponse<C extends Command> =
-	| { success: false; error: string }
-	| ({ success: true } & Returns<C>);
+	| { success: false; error: string; messageId?: number }
+	| ({ success: true; messageId?: number } & Returns<C>);
 
 /**
  * Internal handler for command `C`

@@ -29,7 +29,10 @@ MAX_RECONNECT_TRIES = 5
 
 class Context:
     steam_socket: websockets.ServerConnection | None = None
+
     message_map: dict[int, websockets.ServerConnection] = {}
+    id_map: dict[int, int] = {}
+
     debugger_url = ""
     port = 7355
     rpc_secret = ""
@@ -131,7 +134,13 @@ def make_handler(ctx: Context):
                         if id in ctx.message_map:
                             client = ctx.message_map[id]
                             ctx.message_map.pop(id, None)
-                            msg.pop("messageId", None)
+
+                            if id in ctx.id_map:
+                                msg["messageId"] = ctx.id_map[id]
+                                ctx.id_map.pop(id)
+                            else:
+                                msg.pop("messageId", None)
+
                             try:
                                 await client.send(json.dumps(msg))
                                 ctx.logger.debug("Sent response to client: %s" % msg)
@@ -215,6 +224,9 @@ def make_handler(ctx: Context):
                             ctx.last_message_id = 0
 
                         ctx.message_map[id] = socket
+
+                        if "messageId" in msg:
+                            ctx.id_map[id] = msg["messageId"]
 
                         if "args" in msg:
                             await ctx.steam_socket.send(
