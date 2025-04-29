@@ -1,7 +1,7 @@
 {
 	"compilerOptions": {
 		"target": "ES2023",
-		"module": "None",
+		"module": "Preserve",
 		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,
 		"strict": true,
