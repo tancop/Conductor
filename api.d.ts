@@ -245,17 +245,17 @@ export type Args<T extends Command> = RpcCommands[T]["args"];
 export type Returns<T extends Command> = RpcCommands[T]["returns"];
 
 /**
- * Internal request sent to Steam for command `C`
+ * Request with no secret sent to Steam
  */
-type SteamRequest<C extends Command> = {
+export type RpcRequest<C extends Command> = {
 	command: C;
 	args: Partial<Args<C>>;
 };
 
 /**
- * Request sent to Conductor by a client
+ * Request sent by a client with an optional secret
  */
-export type RpcRequest<C extends Command> = SteamRequest<C> & {
+export type ClientRequest<C extends Command> = RpcRequest<C> & {
 	secret?: string;
 };
 
@@ -270,7 +270,7 @@ export type RpcResponse<C extends Command> =
  * Internal handler for command `C`
  */
 type RpcHandler<C extends Command> = (
-	request: SteamRequest<C>,
+	request: RpcRequest<C>,
 ) => Promise<RpcResponse<C>>;
 
 /**
@@ -279,3 +279,29 @@ type RpcHandler<C extends Command> = (
 export type RpcHandlers = {
 	[C in Command]: RpcHandler<C>;
 };
+
+/**
+ * App types used to control some behavior around opening, closing and configuring apps
+ */
+export enum AppType {
+	/** Games installed from Steam */
+	Game = 1,
+
+	/** Non-game software including SFM and VR drivers */
+	Software = 2,
+
+	/** Dedicated servers, mod tools, Proton and Steam runtimes. Also includes delisted Half-Life 2 episodes and some Valve software */
+	Tool = 4,
+
+	/** Game demos */
+	Demo = 8,
+
+	/** Steam features like news and game notes */
+	ClientFeature = 256,
+
+	/** Playtests downloaded as a separate app */
+	Playtest = 65536,
+
+	/** Non-Steam apps */
+	Shortcut = 1073741824,
+}
