@@ -26,23 +26,25 @@ MAX_MESSAGE_ID = 100
 MAX_PAYLOAD_TRIES = 5
 MAX_RECONNECT_TRIES = 5
 
-steam_socket: websockets.ServerConnection | None = None
-message_map: dict[int, websockets.ServerConnection] = {}
-debugger_url = ""
-port = 7355
-rpc_secret = ""
 
-last_message_id = 0
+class Context:
+    steam_socket: websockets.ServerConnection | None = None
+    message_map: dict[int, websockets.ServerConnection] = {}
+    debugger_url = ""
+    port = 7355
+    rpc_secret = ""
 
-closing = False
-reconnecting = False
-background_tasks = set()
+    last_message_id = 0
 
-server: websockets.Server
+    closing = False
+    reconnecting = False
+    background_tasks = set()
 
-logger: logging.Logger
+    server: websockets.Server
 
-api_secrets: list[str] = []
+    logger: logging.Logger
+
+    api_secrets: list[str] = []
 
 
 class DowngradeInfoFilter(logging.Filter):
@@ -70,22 +72,18 @@ class ColorFormatter(logging.Formatter):
             return msg
 
 
-async def reconnect_to_steam():
-    global port
-    global rpc_secret
-    global debugger_url
-    global closing
+async def reconnect_to_steam(ctx: Context):
     rpc_secret = secrets.token_urlsafe(16)
 
-    payload = make_payload(port, rpc_secret, False)
+    payload = make_payload(ctx.port, rpc_secret, False)
 
     tries = MAX_RECONNECT_TRIES
 
     while tries > 0:
         try:
-            if reconnecting:
-                logger.info("Connection to Steam lost, resending payload...")
-                await send_payload(debugger_url, payload)
+            if ctx.reconnecting:
+                ctx.logger.info("Connection to Steam lost, resending payload...")
+                await send_payload(ctx.debugger_url, payload)
             else:
                 return
 
@@ -94,61 +92,57 @@ async def reconnect_to_steam():
             tries -= 1
             await asyncio.sleep(0.5)
 
-    logger.info("Connection to Steam lost, closing...")
+    ctx.logger.info("Connection to Steam lost, closing...")
 
-    closing = True
+    ctx.closing = True
 
-    server.close()
+    ctx.server.close()
 
 
-def make_handler():
+def make_handler(ctx: Context):
     async def handler(socket: websockets.ServerConnection):
-        global steam_socket
-        global last_message_id
-        global reconnecting
-        global rpc_secret
-        global closing
-
         try:
             async for message in socket:
-                if message == ("init:" + rpc_secret):
-                    if steam_socket and not reconnecting:
-                        logger.warning("Replay attack blocked!")
+                if message == ("init:" + ctx.rpc_secret):
+                    if ctx.steam_socket and not ctx.reconnecting:
+                        ctx.logger.warning("Replay attack blocked!")
                     else:
-                        steam_socket = socket
-                        if reconnecting:
+                        ctx.steam_socket = socket
+                        if ctx.reconnecting:
                             reconnecting = False
-                            logger.info("Reconnected to Steam!")
+                            ctx.logger.info("Reconnected to Steam!")
                         else:
-                            logger.info("Conductor initialized!")
+                            ctx.logger.info("Conductor initialized!")
 
                 elif str(message).startswith("init:"):
-                    logger.error("Received bad init message:", message)
+                    ctx.logger.error("Received bad init message:", message)
                 else:
-                    if socket == steam_socket:
+                    if socket == ctx.steam_socket:
                         msg: dict = json.loads(message)
 
                         if "messageId" not in msg:
-                            logger.critical("Received message without ID from Steam!")
+                            ctx.logger.critical(
+                                "Received message without ID from Steam!"
+                            )
                             continue
 
                         id: int = msg["messageId"]
 
-                        if id in message_map:
-                            client = message_map[id]
-                            message_map.pop(id, None)
+                        if id in ctx.message_map:
+                            client = ctx.message_map[id]
+                            ctx.message_map.pop(id, None)
                             msg.pop("messageId", None)
                             try:
                                 await client.send(json.dumps(msg))
-                                logger.debug("Sent response to client: %s" % msg)
+                                ctx.logger.debug("Sent response to client: %s" % msg)
                             except websockets.exceptions.ConnectionClosed:
-                                logger.warning("Connection to client lost")
+                                ctx.logger.warning("Connection to client lost")
                     else:
                         msg: dict
                         try:
                             msg = json.loads(message)
                         except json.JSONDecodeError:
-                            logger.warning(
+                            ctx.logger.warning(
                                 "Received invalid JSON from client: %s" % message
                             )
                             await socket.send(
@@ -162,7 +156,7 @@ def make_handler():
                             continue
 
                         if "command" not in msg:
-                            logger.error("No command found in message")
+                            ctx.logger.error("No command found in message")
                             await socket.send(
                                 json.dumps(
                                     {
@@ -173,10 +167,10 @@ def make_handler():
                             )
                             continue
 
-                        if len(api_secrets) > 0:
+                        if len(ctx.api_secrets) > 0:
                             # authentication enabled
                             if "secret" not in msg:
-                                logger.warning(
+                                ctx.logger.warning(
                                     "Received client message without a secret"
                                 )
                                 await socket.send(
@@ -188,8 +182,8 @@ def make_handler():
                                     )
                                 )
                                 continue
-                            if msg["secret"] not in api_secrets:
-                                logger.warning("Client sent invalid secret")
+                            if msg["secret"] not in ctx.api_secrets:
+                                ctx.logger.warning("Client sent invalid secret")
                                 await socket.send(
                                     json.dumps(
                                         {
@@ -200,8 +194,8 @@ def make_handler():
                                 )
                                 continue
 
-                        if not steam_socket:
-                            logger.warning(
+                        if not ctx.steam_socket:
+                            ctx.logger.warning(
                                 "Received command before connecting to Steam"
                             )
                             await socket.send(
@@ -214,52 +208,52 @@ def make_handler():
                             )
                             continue
 
-                        id = last_message_id
-                        last_message_id += 1
+                        id = ctx.last_message_id
+                        ctx.last_message_id += 1
 
-                        if last_message_id == MAX_MESSAGE_ID:
-                            last_message_id = 0
+                        if ctx.last_message_id == MAX_MESSAGE_ID:
+                            ctx.last_message_id = 0
 
-                        message_map[id] = socket
+                        ctx.message_map[id] = socket
 
                         if "args" in msg:
-                            await steam_socket.send(
+                            await ctx.steam_socket.send(
                                 json.dumps(
                                     {
                                         "messageId": id,
-                                        "secret": rpc_secret,
+                                        "secret": ctx.rpc_secret,
                                         "command": msg["command"],
                                         "args": msg["args"],
                                     }
                                 )
                             )
                         else:
-                            await steam_socket.send(
+                            await ctx.steam_socket.send(
                                 json.dumps(
                                     {
                                         "messageId": id,
-                                        "secret": rpc_secret,
+                                        "secret": ctx.rpc_secret,
                                         "command": msg["command"],
                                     }
                                 )
                             )
 
-                        logger.debug("Sent command to Steam:", message)
+                        ctx.logger.debug("Sent command to Steam:", message)
         except asyncio.CancelledError:
             closing = True
         finally:
-            if socket == steam_socket:
+            if socket == ctx.steam_socket:
                 if not reconnecting and not closing:
                     reconnecting = True
 
                     task = asyncio.create_task(reconnect_to_steam())
-                    background_tasks.add(task)
-                    task.add_done_callback(background_tasks.discard)
+                    ctx.background_tasks.add(task)
+                    task.add_done_callback(ctx.background_tasks.discard)
 
     return handler
 
 
-def make_payload(port: int, rpc_secret: str, replace: bool):
+def make_payload(ctx: Context, port: int, rpc_secret: str, replace: bool):
     payload = ""
     try:
         with open("out/payload.template.js", "r") as file:
@@ -272,8 +266,8 @@ def make_payload(port: int, rpc_secret: str, replace: bool):
 
             return payload
     except FileNotFoundError:
-        logger.critical("Payload file not found!")
-        server.close()
+        ctx.logger.critical("Payload file not found!")
+        ctx.server.close()
         return ""
 
 
@@ -309,34 +303,28 @@ def kill_previous_instances():
     atexit.register(lambda: pid_file.unlink(missing_ok=True))
 
 
-async def main():
-    global debugger_url
-    global server
-    global rpc_secret
-    global closing
-    global api_secrets
-
+async def main(ctx: Context):
     kill_previous_instances()
 
     await asyncio.sleep(0.1)
 
-    rpc_secret = secrets.token_urlsafe(16)
+    ctx.rpc_secret = secrets.token_urlsafe(16)
 
-    logger.info("Starting Conductor...")
+    ctx.logger.info("Starting Conductor...")
 
     try:
         with open("secrets.json") as f:
             try:
-                api_secrets = json.load(f)
-                logger.info("Found secrets.json, turning on authentication")
+                ctx.api_secrets = json.load(f)
+                ctx.logger.info("Found secrets.json, turning on authentication")
             except json.JSONDecodeError:
-                logger.warning("secrets.json is not valid JSON")
+                ctx.logger.warning("secrets.json is not valid JSON")
             except UnicodeDecodeError:
-                logger.warning("secrets.json is not valid Unicode")
+                ctx.logger.warning("secrets.json is not valid Unicode")
     except OSError:
-        logger.info("secrets.json not found, turning off authentication")
+        ctx.logger.info("secrets.json not found, turning off authentication")
 
-    server = await serve(make_handler(), "", port)
+    ctx.server = await serve(make_handler(ctx), "", ctx.port)
 
     js_context_tab: dict[str, str] = {}
 
@@ -361,36 +349,38 @@ async def main():
                 raise requests.exceptions.ConnectionError
 
         except requests.exceptions.ConnectionError:
-            logger.info("Connection to Steam client failed, retrying...")
+            ctx.logger.info("Connection to Steam client failed, retrying...")
             await asyncio.sleep(0.5)
 
     if "webSocketDebuggerUrl" not in js_context_tab:
-        logger.critical("SharedJSContext has no debugger URL!")
+        ctx.logger.critical("SharedJSContext has no debugger URL!")
         return
 
-    debugger_url = js_context_tab["webSocketDebuggerUrl"]
-    logger.debug("Sending payload to:", debugger_url)
+    ctx.debugger_url = js_context_tab["webSocketDebuggerUrl"]
+    ctx.logger.debug("Sending payload to:", ctx.debugger_url)
 
-    payload = make_payload(port, rpc_secret, True)
+    payload = make_payload(ctx, ctx.port, ctx.rpc_secret, True)
 
     tries = MAX_PAYLOAD_TRIES
     while True:
         try:
-            await send_payload(debugger_url, payload)
+            await send_payload(ctx.debugger_url, payload)
             break
         except (ConnectionRefusedError, websockets.exceptions.InvalidStatus):
-            logger.warning("Failed to send payload, retrying...")
+            ctx.logger.warning("Failed to send payload, retrying...")
             tries -= 1
             if tries == 0:
-                logger.error(
+                ctx.logger.error(
                     "Failed to send payload. Check if Steam is running with remote debugging enabled."
                 )
                 return
 
-    await server.serve_forever()
+    await ctx.server.serve_forever()
 
 
 if __name__ == "__main__":
+    ctx = Context()
+
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(ColorFormatter())
 
@@ -399,17 +389,17 @@ if __name__ == "__main__":
     root_logger.setLevel(logging.INFO)
 
     for lib in ["requests", "websockets", "websockets.server"]:
-        logger = logging.getLogger(lib)
-        logger.addFilter(DowngradeInfoFilter())
-        logger.propagate = False
+        lib_logger = logging.getLogger(lib)
+        lib_logger.addFilter(DowngradeInfoFilter())
+        lib_logger.propagate = False
 
-    logger = logging.getLogger(__name__)
+    ctx.logger = logging.getLogger(__name__)
 
     s = requests.Session()
     s.mount("http://", HTTPAdapter(max_retries=0))
 
     try:
-        asyncio.run(main())
+        asyncio.run(main(ctx))
     except (asyncio.CancelledError, KeyboardInterrupt):
-        closing = True
-        logger.info("Goodbye!")
+        ctx.closing = True
+        ctx.logger.info("Goodbye!")
