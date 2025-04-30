@@ -1,4 +1,4 @@
-import type { RpcResponse, Command, RpcRequest } from "./api.d";
+import type { RpcResponse, Command, RpcRequest, Returns } from "./api.d";
 import { AppType } from "./api.d";
 
 /**
@@ -98,11 +98,7 @@ class Client {
 	}
 }
 
-let client = new Client(
-	"ws://localhost:7355",
-	"qyHY9btYEm+6zby4KdGfDQ==",
-	1000,
-);
+let client = new Client("ws://localhost:7355", "qyHY9btYEm+6zby4KdGfDQ==");
 
 let res = await client.call({
 	command: "GetApps",
@@ -112,11 +108,16 @@ let res = await client.call({
 });
 
 if (res.success) {
-	let chunkCount = Math.ceil(res.appIds.length / 100);
+	const chunkSize = 100;
 
+	let chunkCount = Math.ceil(res.appIds.length / chunkSize);
+
+	let apps: (Returns<"GetAppInfo"> & { id: number })[] = [];
+
+	performance.mark("fetch");
 	for (let i = 0; i < chunkCount; i++) {
 		await Promise.all(
-			res.appIds.slice(i * 100, (i + 1) * 100).map((appId) =>
+			res.appIds.slice(i * chunkSize, (i + 1) * chunkSize).map((appId) =>
 				client
 					.call({
 						command: "GetAppInfo",
@@ -126,7 +127,7 @@ if (res.success) {
 					})
 					.then((app) => {
 						if (app.success) {
-							console.log(`${app.displayName} [${appId}]`);
+							apps.push({ id: appId, ...app });
 						} else {
 							console.error("GetAppInfo failed");
 						}
@@ -134,6 +135,13 @@ if (res.success) {
 			),
 		);
 	}
+	let time = performance.measure("fetch");
+
+	for (const app of apps) {
+		console.log(`${app.displayName} [${app.id}]`);
+	}
+
+	console.log(`\ntime to fetch library: ${time.duration} ms`);
 } else {
 	console.error("GetApps failed");
 }
