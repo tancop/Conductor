@@ -1,28 +1,65 @@
 import type { RpcResponse, Command, RpcRequest } from "./api.d";
 import { AppType } from "./api.d";
 
+/**
+ * Type safe RPC client for Conductor. Handles the tricky parts for you so you can just do this:
+ *
+ * ```
+ *	let res = await client.call({
+ *		command: "GetApps",
+ *		args: {
+ *			typeFilter: [AppType.Game, AppType.Shortcut],
+ *			installedOnly: true,
+ *		},
+ *	});
+ *
+ * client.close();
+ * ```
+ */
 class Client {
 	#secret?: string = undefined;
 	#ws: WebSocket;
 	#ready: Promise<void>;
-	#lastMessageId = 0;
-	#maxWaitingMessages: number;
+	#maxConnections: number;
+	#counter = 0;
 
-	constructor(url: string, secret?: string, maxWaitingMessages = 100) {
+	/**
+	 * Creates a new client. The default value for `maxConnections` is 500, this should be enough
+	 * unless you're fetching data for all the apps in your massive library at the same time.
+	 *
+	 * @param url the Conductor server's URL
+	 * @param secret optional secret to send with every request
+	 * @param maxConnections maximum number of calls waiting at the same time
+	 */
+	constructor(url: string, secret?: string, maxConnections = 500) {
 		this.#ws = new WebSocket(url);
 		this.#ready = new Promise((resolve) => {
 			this.#ws.addEventListener("open", () => resolve());
 		});
-		this.#maxWaitingMessages = maxWaitingMessages;
+
+		this.#maxConnections = maxConnections;
 
 		if (secret) {
 			this.#secret = secret;
 		}
 	}
 
+	/**
+	 * Calls a RPC command using this client.
+	 *
+	 * @param req request object with command and args
+	 * @returns response with the command's return value or error
+	 */
 	async call<T extends Command>(req: RpcRequest<T>): Promise<RpcResponse<T>> {
 		await this.#ready;
-		let messageId = this.#lastMessageId;
+
+		let messageId = this.#counter;
+
+		this.#counter++;
+
+		if (this.#counter === this.#maxConnections) {
+			this.#counter = 0;
+		}
 
 		if (this.#secret) {
 			this.#ws.send(
@@ -36,12 +73,6 @@ class Client {
 			this.#ws.send(JSON.stringify({ messageId, ...req }));
 		}
 
-		this.#lastMessageId++;
-
-		if (this.#lastMessageId === this.#maxWaitingMessages) {
-			this.#lastMessageId = 0;
-		}
-
 		return new Promise((resolve) => {
 			let listener = (event: MessageEvent) => {
 				let data = JSON.parse(event.data);
@@ -51,7 +82,7 @@ class Client {
 					data.messageId === messageId
 				) {
 					this.#ws.removeEventListener("message", listener);
-					resolve(JSON.parse(event.data));
+					resolve(data);
 				}
 			};
 
@@ -59,12 +90,19 @@ class Client {
 		});
 	}
 
+	/**
+	 * Closes the client. You should always do this after you're done with all your requests.
+	 */
 	close() {
 		this.#ws.close();
 	}
 }
 
-let client = new Client("ws://localhost:7355", "qyHY9btYEm+6zby4KdGfDQ==");
+let client = new Client(
+	"ws://localhost:7355",
+	"qyHY9btYEm+6zby4KdGfDQ==",
+	1000,
+);
 
 let res = await client.call({
 	command: "GetApps",
@@ -75,24 +113,24 @@ let res = await client.call({
 });
 
 if (res.success) {
-	let apps: RpcResponse<"GetAppInfo">[] = await Promise.all(
+	await Promise.all(
 		res.appIds.map((appId) =>
-			client.call({
-				command: "GetAppInfo",
-				args: {
-					appId,
-				},
-			}),
+			client
+				.call({
+					command: "GetAppInfo",
+					args: {
+						appId,
+					},
+				})
+				.then((app) => {
+					if (app.success) {
+						console.log(app.displayName);
+					} else {
+						console.error("GetAppInfo failed");
+					}
+				}),
 		),
 	);
-
-	for (const app of apps) {
-		if (app.success) {
-			console.log(app.displayName);
-		} else {
-			console.error("GetAppInfo failed");
-		}
-	}
 } else {
 	console.error("GetApps failed");
 }
