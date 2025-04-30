@@ -108,29 +108,32 @@ let res = await client.call({
 	command: "GetApps",
 	args: {
 		typeFilter: [AppType.Game, AppType.Shortcut],
-		installedOnly: true,
 	},
 });
 
 if (res.success) {
-	await Promise.all(
-		res.appIds.map((appId) =>
-			client
-				.call({
-					command: "GetAppInfo",
-					args: {
-						appId,
-					},
-				})
-				.then((app) => {
-					if (app.success) {
-						console.log(app.displayName);
-					} else {
-						console.error("GetAppInfo failed");
-					}
-				}),
-		),
-	);
+	let chunkCount = Math.ceil(res.appIds.length / 100);
+
+	for (let i = 0; i < chunkCount; i++) {
+		await Promise.all(
+			res.appIds.slice(i * 100, (i + 1) * 100).map((appId) =>
+				client
+					.call({
+						command: "GetAppInfo",
+						args: {
+							appId,
+						},
+					})
+					.then((app) => {
+						if (app.success) {
+							console.log(`${app.displayName} [${appId}]`);
+						} else {
+							console.error("GetAppInfo failed");
+						}
+					}),
+			),
+		);
+	}
 } else {
 	console.error("GetApps failed");
 }
