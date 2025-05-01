@@ -1,6 +1,6 @@
 use futures_util::StreamExt;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
 use tokio::{
     io::Error,
     net::{TcpListener, TcpStream},
@@ -8,11 +8,43 @@ use tokio::{
 
 mod inject;
 mod payload;
+mod process;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    env_logger::init();
-    log::info!("Starting Conductor");
+    env_logger::Builder::new()
+        .filter_level(log::LevelFilter::Info)
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "[{} {}] {}",
+                chrono::Local::now().format("%T%.3f"),
+                record.level(),
+                record.args()
+            )
+        })
+        .init();
+    log::info!("Starting Conductor...");
+
+    tokio::spawn(start());
+
+    tokio::signal::ctrl_c().await?;
+
+    log::info!("Goodbye!");
+
+    Ok(())
+}
+
+async fn start() {
+    if let Err(e) = process::kill_other_instances().await {
+        log::error!("{}", e);
+    }
+
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+    if let Err(e) = process::store_pid() {
+        log::warn!("Failed to store PID: {}", e);
+    }
 
     // Find and open payload file
     let Ok(current_dir) = std::env::current_dir() else {
@@ -42,14 +74,12 @@ async fn main() -> Result<(), Error> {
     // Setup payload with port and secret
     let payload = payload::make_payload(&payload, 7355, true, "Secret!".to_string());
 
+    // Start server
     let addr = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "127.0.0.1:7355".to_string());
 
-    // Create the event loop and TCP listener we'll accept connections on
-    let try_socket = TcpListener::bind(&addr).await;
-    let listener = try_socket.expect("Failed to bind");
-    log::info!("Listening on: {}", addr);
+    tokio::spawn(serve(addr));
 
     // Inject payload into SteamWebHelper
     match inject::inject_payload(&debugger_url, &payload, 5).await {
@@ -61,13 +91,17 @@ async fn main() -> Result<(), Error> {
     }
 
     log::info!("Conductor initialized!");
+}
 
-    // Start server
+async fn serve(addr: String) {
+    // Create the event loop and TCP listener we'll accept connections on
+    let try_socket = TcpListener::bind(&addr).await;
+    let listener = try_socket.expect("Failed to bind");
+    log::info!("Listening on: {}", addr);
+
     while let Ok((stream, _)) = listener.accept().await {
         tokio::spawn(accept_connection(stream));
     }
-
-    Ok(())
 }
 
 async fn accept_connection(stream: TcpStream) {
