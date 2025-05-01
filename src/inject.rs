@@ -1,9 +1,11 @@
 use futures_util::{SinkExt, StreamExt};
 use reqwest::{Error, Response};
 use serde::Deserialize;
-use std::fs::File;
+use serde_json::json;
 use std::time::Duration;
+use thiserror::Error;
 use tokio_tungstenite::connect_async;
+use tokio_tungstenite::tungstenite::Message;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,7 +46,7 @@ pub async fn try_get_debugger_url() -> Option<String> {
             if let Some(url) = find_url(res).await {
                 return Some(url);
             } else {
-                println!("Connection to Steam client failed, retrying...");
+                log::info!("Connection to Steam client failed, retrying...");
                 tokio::time::sleep(Duration::from_millis(1000)).await;
             }
         }
@@ -53,8 +55,38 @@ pub async fn try_get_debugger_url() -> Option<String> {
     None
 }
 
-pub async fn inject_payload<'a>(url: &'a str) {
+#[derive(Debug, Error)]
+pub enum InjectError {
+    #[error("Failed to connect with Steam client")]
+    NotConnected,
+    #[error("Failed to send payload")]
+    NotSent,
+}
+
+pub async fn inject_payload(url: &str, payload: &str, max_tries: u32) -> Result<(), InjectError> {
     if let Ok((ws_stream, _)) = connect_async(url).await {
-        let (mut write, mut read) = ws_stream.split();
+        let (mut write, _) = ws_stream.split();
+
+        let msg = json!({
+            "id": 1,
+            "method": "Runtime.evaluate",
+            "params": {
+                "expression": payload,
+                "awaitPromise": true
+            }
+        });
+
+        let json = serde_json::ser::to_string(&msg).unwrap();
+
+        for _ in 0..max_tries {
+            if let Ok(_) = write.send(Message::from(json.to_owned())).await {
+                log::debug!("Injected payload");
+                return Ok(());
+            }
+        }
+
+        Err(InjectError::NotSent)
+    } else {
+        Err(InjectError::NotConnected)
     }
 }

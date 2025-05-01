@@ -3,8 +3,8 @@
         "esbuild": "^0.25.2"
     },
     "scripts": {
-        "build": "tsc --noEmit && esbuild src/js/payload.template.ts --bundle --minify --outfile=dist/payload.template.js && uv build",
-        "dev": "esbuild payload.template.ts --bundle --outfile=out/payload.template.js && uv run main.py"
+        "build": "tsc --noEmit && esbuild src/js/payload.template.ts --bundle --minify --outfile=dist/payload.template.js && cargo build",
+        "dev": "esbuild src/js/payload.template.ts --bundle --outfile=dist/payload.template.js && RUST_LOG=debug cargo run"
     },
     "devDependencies": {
         "@biomejs/biome": "^1.9.4"

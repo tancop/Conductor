@@ -1,5 +1,4 @@
-use futures_util::{StreamExt, TryStreamExt};
-use regex::Regex;
+use futures_util::StreamExt;
 use std::fs::File;
 use std::io::Read;
 use tokio::{
@@ -13,10 +12,9 @@ mod payload;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     env_logger::init();
-    println!("Starting Conductor");
+    log::info!("Starting Conductor");
 
-    let debugger_url = inject::try_get_debugger_url().await;
-
+    // Find and open payload file
     let Ok(current_dir) = std::env::current_dir() else {
         log::error!("Could not get current directory");
         std::process::exit(1);
@@ -33,23 +31,38 @@ async fn main() -> Result<(), Error> {
         std::process::exit(1);
     };
 
-    if let Some(url) = debugger_url {
-        log::debug!("Sending payload to URL: {url}");
+    // Get SteamWebHelper's debugger URL
+    let Some(debugger_url) = inject::try_get_debugger_url().await else {
+        log::error!("Could not find debugger url");
+        std::process::exit(1);
+    };
 
-        let payload = payload::make_payload(&payload, 7355, true, "Secret!".to_string());
+    log::debug!("Sending payload to URL: {debugger_url}");
 
-        log::debug!("payload contents: {payload}");
-    }
+    // Setup payload with port and secret
+    let payload = payload::make_payload(&payload, 7355, true, "Secret!".to_string());
 
     let addr = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "127.0.0.1:7355".to_string());
 
-    // Create the event loop and TCP listener we'll accept connections on.
+    // Create the event loop and TCP listener we'll accept connections on
     let try_socket = TcpListener::bind(&addr).await;
     let listener = try_socket.expect("Failed to bind");
-    println!("Listening on: {}", addr);
+    log::info!("Listening on: {}", addr);
 
+    // Inject payload into SteamWebHelper
+    match inject::inject_payload(&debugger_url, &payload, 5).await {
+        Ok(()) => {}
+        Err(err) => {
+            log::error!("{err}");
+            std::process::exit(1);
+        }
+    }
+
+    log::info!("Conductor initialized!");
+
+    // Start server
     while let Ok((stream, _)) = listener.accept().await {
         tokio::spawn(accept_connection(stream));
     }
@@ -61,18 +74,19 @@ async fn accept_connection(stream: TcpStream) {
     let addr = stream
         .peer_addr()
         .expect("connected streams should have a peer address");
-    println!("Peer address: {}", addr);
+    log::debug!("Peer address: {}", addr);
 
     let ws_stream = tokio_tungstenite::accept_async(stream)
         .await
         .expect("Error during the websocket handshake occurred");
 
-    println!("New WebSocket connection: {}", addr);
+    log::debug!("New WebSocket connection: {}", addr);
 
-    let (write, read) = ws_stream.split();
+    let (_, mut read) = ws_stream.split();
 
-    read.try_filter(|msg| std::future::ready(msg.is_text() || msg.is_binary()))
-        .forward(write)
-        .await
-        .expect("Failed to forward messages")
+    while let Some(msg) = read.next().await {
+        if let Ok(msg) = msg {
+            println!("Received message: {msg}");
+        }
+    }
 }
