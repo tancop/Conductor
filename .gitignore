@@ -1,5 +1,3 @@
-node_modules/
-out/
-.uv_cache/
-.venv/
-secrets.json
+target
+dist
+node_modules
