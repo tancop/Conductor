@@ -1,6 +1,8 @@
 use futures_util::StreamExt;
+use log::LevelFilter;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::str::FromStr;
 use tokio::{
     io::Error,
     net::{TcpListener, TcpStream},
@@ -12,8 +14,13 @@ mod process;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    // Setup logger
+    let filter =
+        LevelFilter::from_str(&std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned()))
+            .unwrap_or(LevelFilter::Info);
+
     env_logger::Builder::new()
-        .filter_level(log::LevelFilter::Info)
+        .filter_level(filter)
         .format(|buf, record| {
             writeln!(
                 buf,
@@ -24,10 +31,13 @@ async fn main() -> Result<(), Error> {
             )
         })
         .init();
+
     log::info!("Starting Conductor...");
 
+    // Spawn server task
     tokio::spawn(start());
 
+    // Wait for keyboard interrupt
     tokio::signal::ctrl_c().await?;
 
     log::info!("Goodbye!");
@@ -120,7 +130,7 @@ async fn accept_connection(stream: TcpStream) {
 
     while let Some(msg) = read.next().await {
         if let Ok(msg) = msg {
-            println!("Received message: {msg}");
+            log::debug!("Received message: {msg}");
         }
     }
 }
