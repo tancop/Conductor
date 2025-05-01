@@ -1,3 +1,4 @@
+use cfg_if::cfg_if;
 use futures_util::StreamExt;
 use log::LevelFilter;
 use std::fs::File;
@@ -37,8 +38,19 @@ async fn main() -> Result<(), Error> {
     // Spawn server task
     tokio::spawn(start());
 
-    // Wait for keyboard interrupt
-    tokio::signal::ctrl_c().await?;
+    // Wait for exit event
+    cfg_if! {
+        if #[cfg(unix)] {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {},
+                _ = tokio::signal::unix::ctrl_close() => {},
+            }
+        } else {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {},
+            }
+        }
+    }
 
     log::info!("Goodbye!");
 
@@ -46,6 +58,7 @@ async fn main() -> Result<(), Error> {
 }
 
 async fn start() {
+    // Kill other instances if running
     if let Err(e) = process::kill_other_instances().await {
         log::error!("{}", e);
     }
