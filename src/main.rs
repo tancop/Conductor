@@ -1,15 +1,25 @@
+use crate::message::RpcRequest;
 use cfg_if::cfg_if;
-use futures_util::StreamExt;
+use futures_util::{SinkExt, StreamExt};
 use log::LevelFilter;
+use serde_json::json;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::str::FromStr;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
+use tokio::sync::{Mutex, RwLock};
 use tokio::{
     io::Error,
     net::{TcpListener, TcpStream},
 };
+use tokio_tungstenite::WebSocketStream;
+use tokio_tungstenite::tungstenite::Message;
 
 mod inject;
+mod message;
 mod payload;
 mod process;
 
@@ -116,34 +126,136 @@ async fn start() {
     log::info!("Conductor initialized!");
 }
 
+struct Context {
+    connected: AtomicBool,
+    steam_tx: RwLock<Option<UnboundedSender<String>>>,
+    last_message_id: AtomicU32,
+    message_senders: HashMap<u32, UnboundedSender<String>>,
+}
+
 async fn serve(addr: String) {
     // Create the event loop and TCP listener we'll accept connections on
     let try_socket = TcpListener::bind(&addr).await;
     let listener = try_socket.expect("Failed to bind");
     log::info!("Listening on: {}", addr);
 
+    let ctx = Arc::new(Context {
+        connected: false.into(),
+        steam_tx: None.into(),
+        last_message_id: 0.into(),
+        message_senders: HashMap::new(),
+    });
+
     while let Ok((stream, _)) = listener.accept().await {
-        tokio::spawn(accept_connection(stream));
+        tokio::spawn(handle_connection(ctx.clone(), stream));
     }
 }
 
-async fn accept_connection(stream: TcpStream) {
+async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
     let addr = stream
         .peer_addr()
         .expect("connected streams should have a peer address");
     log::debug!("Peer address: {}", addr);
 
-    let ws_stream = tokio_tungstenite::accept_async(stream)
+    let mut ws_stream = tokio_tungstenite::accept_async(stream)
         .await
         .expect("Error during the websocket handshake occurred");
 
     log::debug!("New WebSocket connection: {}", addr);
 
-    let (_, mut read) = ws_stream.split();
+    let mut connected = false;
+    let mut is_steam = false;
+    let (tx, mut rx) = unbounded_channel::<String>();
 
-    while let Some(msg) = read.next().await {
-        if let Ok(msg) = msg {
-            log::debug!("Received message: {msg}");
+    tokio::select! {
+        res = ws_stream.next() => {
+            if let Some(Ok(msg)) = res {
+                log::debug!("Received message from network: {msg}");
+
+                let mut should_break = false;
+
+                if let Ok(msg) = msg.into_text() {
+                    if !connected {
+                        if !ctx.connected.load(Ordering::Relaxed) && msg.starts_with("init:") {
+                            // Init message from Steam
+                            log::debug!("Received init message: '{msg}'");
+                            _ = ctx.connected.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed);
+                            is_steam = true;
+                            let mut steam_tx = ctx.steam_tx.write().await;
+                            if steam_tx.is_none() {
+                                steam_tx.replace(tx);
+                            } else {
+                                log::error!("Double init: {msg}");
+                            }
+                            should_break = true;
+                        }
+                        connected = true;
+                    }
+
+                    if !should_break {
+                        if is_steam {
+                            // Forward message to client
+                            if let Ok(mut req) = serde_json::from_str::<serde_json::Value>(&msg) {
+                                if let Some(req) = req.as_object_mut() {
+                                    // Get the right client from message ID
+                                    if let Some(id) = req.get("message_id").and_then(|id| id.as_u64().map(|id| id as u32)) {
+                                        req.remove("message_id");
+
+                                        if let Some(tx) = ctx.message_senders.get(&id) {
+                                            if let Err(e) = serde_json::to_string(req).and_then(|msg| Ok(tx.send(msg))) {
+                                                log::error!("Error sending message to client: {e}");
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                log::error!("Received invalid message from Steam: {msg}");
+                            }
+                        } else {
+                            // Forward message to Steam
+                            let steam_tx = ctx.steam_tx.read().await;
+
+                            if let Some(tx) = steam_tx.as_ref() {
+                                if let Ok(mut req) = serde_json::from_str::<RpcRequest>(&msg) {
+                                    req.secret = None;
+                                    req.message_id = Some(ctx.last_message_id.fetch_add(1, Ordering::Relaxed));
+
+                                    let req = serde_json::to_string(&req).expect("failed to serialize message");
+
+                                    log::debug!("Forwarding request: {req}");
+
+                                    if let Err(e) = tx.send(req) {
+                                        log::error!("Error sending message to Steam: {e}");
+                                    }
+                                } else {
+                                    log::warn!("Received invalid message: {msg}");
+                                    send_message(&mut ws_stream, json!({
+                                        "success": false,
+                                        "error": "Message is not valid",
+                                    }).as_str().expect("failed to serialize error message")).await;
+                                }
+                            } else {
+                                log::warn!("Received command before connecting to Steam");
+                                send_message(&mut ws_stream, json!({
+                                    "success": false,
+                                    "error": "Not connected to Steam",
+                                }).as_str().expect("failed to serialize error message")).await;
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        res = rx.recv() => {
+            if let Some(msg) = res {
+                log::debug!("Received message from other handler: {msg}");
+            }
         }
+    }
+}
+
+async fn send_message(stream: &mut WebSocketStream<TcpStream>, msg: &str) {
+    if let Err(e) = stream.send(Message::from(msg)).await {
+        log::warn!("Failed to send message: {}", e);
     }
 }
