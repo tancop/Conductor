@@ -130,7 +130,7 @@ struct Context {
     connected: AtomicBool,
     steam_tx: RwLock<Option<UnboundedSender<String>>>,
     last_message_id: AtomicU32,
-    message_senders: HashMap<u32, UnboundedSender<String>>,
+    message_senders: RwLock<HashMap<u32, UnboundedSender<String>>>,
 }
 
 async fn serve(addr: String) {
@@ -143,7 +143,7 @@ async fn serve(addr: String) {
         connected: false.into(),
         steam_tx: None.into(),
         last_message_id: 0.into(),
-        message_senders: HashMap::new(),
+        message_senders: HashMap::new().into(),
     });
 
     while let Ok((stream, _)) = listener.accept().await {
@@ -172,8 +172,6 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
             if let Some(Ok(msg)) = res {
                 log::debug!("Received message from network: {msg}");
 
-                let mut should_break = false;
-
                 if let Ok(msg) = msg.into_text() {
                     if !connected {
                         if !ctx.connected.load(Ordering::Relaxed) && msg.starts_with("init:") {
@@ -187,12 +185,42 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
                             } else {
                                 log::error!("Double init: {msg}");
                             }
-                            should_break = true;
+                        } else {
+                            // Forward message to Steam
+                            let steam_tx = ctx.steam_tx.read().await;
+
+                            if let Some(steam_tx) = steam_tx.as_ref() {
+                                if let Ok(mut req) = serde_json::from_str::<RpcRequest>(&msg) {
+                                    req.secret = None;
+                                    let message_id = ctx.last_message_id.fetch_add(1, Ordering::Relaxed);
+                                    req.message_id = Some(message_id);
+
+                                    ctx.message_senders.write().await.insert(message_id, tx.clone());
+
+                                    let req = serde_json::to_string(&req).expect("failed to serialize message");
+
+                                    log::debug!("Forwarding first request: {req}");
+
+                                    if let Err(e) = steam_tx.send(req) {
+                                        log::error!("Error sending message to Steam: {e}");
+                                    }
+                                } else {
+                                    log::warn!("Received invalid message: {msg}");
+                                    send_message(&mut ws_stream, json!({
+                                        "success": false,
+                                        "error": "Message is not valid",
+                                    }).as_str().expect("failed to serialize error message")).await;
+                                }
+                            } else {
+                                log::warn!("Received command before connecting to Steam");
+                                send_message(&mut ws_stream, json!({
+                                    "success": false,
+                                    "error": "Not connected to Steam",
+                                }).as_str().expect("failed to serialize error message")).await;
+                            }
                         }
                         connected = true;
-                    }
-
-                    if !should_break {
+                    } else {
                         if is_steam {
                             // Forward message to client
                             if let Ok(mut req) = serde_json::from_str::<serde_json::Value>(&msg) {
@@ -201,7 +229,7 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
                                     if let Some(id) = req.get("message_id").and_then(|id| id.as_u64().map(|id| id as u32)) {
                                         req.remove("message_id");
 
-                                        if let Some(tx) = ctx.message_senders.get(&id) {
+                                        if let Some(tx) = ctx.message_senders.read().await.get(&id) {
                                             if let Err(e) = serde_json::to_string(req).and_then(|msg| Ok(tx.send(msg))) {
                                                 log::error!("Error sending message to client: {e}");
                                             }
@@ -215,7 +243,7 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
                             // Forward message to Steam
                             let steam_tx = ctx.steam_tx.read().await;
 
-                            if let Some(tx) = steam_tx.as_ref() {
+                            if let Some(steam_tx) = steam_tx.as_ref() {
                                 if let Ok(mut req) = serde_json::from_str::<RpcRequest>(&msg) {
                                     req.secret = None;
                                     req.message_id = Some(ctx.last_message_id.fetch_add(1, Ordering::Relaxed));
@@ -224,7 +252,7 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
 
                                     log::debug!("Forwarding request: {req}");
 
-                                    if let Err(e) = tx.send(req) {
+                                    if let Err(e) = steam_tx.send(req) {
                                         log::error!("Error sending message to Steam: {e}");
                                     }
                                 } else {
