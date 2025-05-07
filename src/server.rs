@@ -15,6 +15,7 @@ struct Context {
     steam_tx: RwLock<Option<UnboundedSender<String>>>,
     last_message_id: AtomicU32,
     message_senders: RwLock<HashMap<u32, UnboundedSender<String>>>,
+    message_ids: RwLock<HashMap<u32, u32>>,
     steam_secret: String,
 }
 
@@ -29,6 +30,7 @@ pub async fn serve(addr: String, steam_secret: String) {
         steam_tx: None.into(),
         last_message_id: 0.into(),
         message_senders: HashMap::new().into(),
+        message_ids: HashMap::new().into(),
         steam_secret,
     });
 
@@ -84,7 +86,7 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
         is_steam = true;
 
         let mut steam_tx = ctx.steam_tx.write().await;
-        steam_tx.replace(tx);
+        steam_tx.replace(tx.clone());
 
         // Drop the write lock immediately
         drop(steam_tx);
@@ -94,10 +96,20 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
         if let Some(steam_tx) = steam_tx.as_ref() {
             if let Ok(mut req) = serde_json::from_str::<RpcRequest>(&msg_text) {
                 req.secret = Some(&ctx.steam_secret);
+
                 let message_id = ctx.last_message_id.fetch_add(1, Ordering::Relaxed);
+
+                if let Some(id) = req.message_id {
+                    log::debug!("Inserting new id {}:{}", id, message_id);
+                    ctx.message_ids.write().await.insert(message_id, id);
+                }
+
                 req.message_id = Some(message_id);
 
-                ctx.message_senders.write().await.insert(message_id, tx);
+                ctx.message_senders
+                    .write()
+                    .await
+                    .insert(message_id, tx.clone());
 
                 let req = serde_json::to_string(&req).expect("failed to serialize message");
                 if let Err(e) = steam_tx.send(req) {
@@ -149,7 +161,7 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
                             handle_steam_message(ctx.clone(), &msg_text).await;
                         } else {
                             log::debug!("Received client message: '{}'", msg_text);
-                            handle_client_message(ctx.clone(), &msg_text, &mut ws_stream).await;
+                            handle_client_message(ctx.clone(), &msg_text, &mut ws_stream, &mut tx.clone()).await;
                         }
                     },
                     Some(Err(e)) => {
@@ -193,6 +205,7 @@ async fn handle_client_message(
     ctx: Arc<Context>,
     msg: &Utf8Bytes,
     ws_stream: &mut WebSocketStream<TcpStream>,
+    tx: &mut UnboundedSender<String>,
 ) {
     let steam_tx = ctx.steam_tx.read().await;
     if let Some(steam_tx) = steam_tx.as_ref() {
@@ -201,8 +214,19 @@ async fn handle_client_message(
             return;
         };
 
+        let new_id = ctx.last_message_id.fetch_add(1, Ordering::Relaxed);
+
+        let mut ids = ctx.message_ids.write().await;
+
+        if let Some(id) = req.message_id {
+            log::debug!("Inserting new id {}:{}", id, new_id);
+            ids.insert(new_id, id);
+        }
+
         req.secret = Some(&ctx.steam_secret);
-        req.message_id = Some(ctx.last_message_id.fetch_add(1, Ordering::Relaxed));
+        req.message_id = Some(new_id);
+
+        ctx.message_senders.write().await.insert(new_id, tx.clone());
 
         let Ok(req) = serde_json::to_string(&req) else {
             log::error!("Failed to serialize client message");
@@ -247,6 +271,11 @@ async fn handle_steam_message(ctx: Arc<Context>, msg: &Utf8Bytes) {
     };
 
     req.remove("messageId");
+
+    let ids = ctx.message_ids.read().await;
+    if let Some(id) = ids.get(&id) {
+        req.insert("messageId".to_string(), serde_json::Value::from(*id as u64));
+    }
 
     let senders = ctx.message_senders.read().await;
     let Some(tx) = senders.get(&id) else {
