@@ -8,7 +8,8 @@
         "dev": "esbuild src/js/payload.template.ts --bundle --outfile=dist/payload.template.js && RUST_LOG=debug cargo run"
     },
     "devDependencies": {
-        "@biomejs/biome": "^1.9.4"
+        "@biomejs/biome": "^1.9.4",
+        "typescript": "^5.8.3"
     },
     "trustedDependencies": ["@biomejs/biome"]
 }
