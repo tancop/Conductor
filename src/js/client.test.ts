@@ -53,6 +53,8 @@ class Client {
     async call<T extends Command>(req: RpcRequest<T>): Promise<RpcResponse<T>> {
         await this.ready;
 
+        console.log("ready");
+
         let messageId = this.counter;
 
         this.counter++;
@@ -73,8 +75,11 @@ class Client {
             this.ws.send(JSON.stringify({ messageId, ...req }));
         }
 
+        console.log("sent message");
+
         return new Promise((resolve) => {
             let listener = (event: MessageEvent) => {
+                console.log("received message");
                 let data = JSON.parse(event.data);
 
                 if (
@@ -100,12 +105,16 @@ class Client {
 
 let client = new Client("ws://localhost:7355", "qyHY9btYEm+6zby4KdGfDQ==");
 
+console.log("created client");
+
 let res = await client.call({
     command: "GetApps",
     args: {
         typeFilter: [AppType.Game, AppType.Shortcut],
     },
 });
+
+console.log("called GetApps");
 
 if (res.success) {
     const chunkSize = 100;

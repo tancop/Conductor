@@ -1,5 +1,4 @@
 use crate::message::RpcRequest;
-use crate::secrets::generate_secret;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
 use std::collections::HashMap;
