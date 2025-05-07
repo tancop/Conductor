@@ -57,7 +57,15 @@ jobs:
           cp dist/payload.template.js release/dist/
 
       - name: Upload release zip
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: "release"
+          name: "release-windows"
+          path: "release"
+
+      - name: Upload release zip
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: "release-linux"
           path: "release"
