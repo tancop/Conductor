@@ -1,3 +1,4 @@
+use crate::enable_cef::enable_cef_debugging;
 use crate::secrets::generate_secret;
 use cfg_if::cfg_if;
 use clap::Parser;
@@ -7,6 +8,7 @@ use std::io::{Read, Write};
 use std::str::FromStr;
 use tokio::io::Error;
 
+mod enable_cef;
 mod inject;
 mod message;
 mod payload;
@@ -60,6 +62,8 @@ async fn main() -> Result<(), Error> {
     if args.secret.is_some() {
         log::info!("Authentication enabled");
     }
+
+    enable_cef_debugging();
 
     // Spawn server task
     tokio::spawn(start(args.port, args.secret, args.address));
