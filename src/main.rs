@@ -15,11 +15,20 @@ mod secrets;
 mod server;
 
 #[derive(Parser)]
+#[command(
+    name = "conductor",
+    about = "Conductor exposes an easy to use WebSockets API for controlling the Steam client."
+)]
 struct Args {
+    /// Port used for opening connections on localhost. The Steam payload will always connect
+    /// to `ws://localhost:[port]`.
     #[arg(short, long, default_value_t = 7355)]
     port: u16,
+    /// Secret for client authentication. If this option is set all requests need to have a
+    /// `secret` field with the provided value.
     #[arg(short, long)]
     secret: Option<String>,
+    /// Hostname used for client connections. Defaults to `localhost:[port]`.
     #[arg(short, long)]
     address: Option<String>,
 }
