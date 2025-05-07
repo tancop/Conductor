@@ -1,4 +1,5 @@
 use crate::message::RpcRequest;
+use crate::secrets::generate_secret;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
 use std::collections::HashMap;
@@ -15,9 +16,10 @@ struct Context {
     steam_tx: RwLock<Option<UnboundedSender<String>>>,
     last_message_id: AtomicU32,
     message_senders: RwLock<HashMap<u32, UnboundedSender<String>>>,
+    steam_secret: String,
 }
 
-pub async fn serve(addr: String) {
+pub async fn serve(addr: String, steam_secret: String) {
     // Create the event loop and TCP listener we'll accept connections on
     let try_socket = TcpListener::bind(&addr).await;
     let listener = try_socket.expect("Failed to bind");
@@ -28,6 +30,7 @@ pub async fn serve(addr: String) {
         steam_tx: None.into(),
         last_message_id: 0.into(),
         message_senders: HashMap::new().into(),
+        steam_secret,
     });
 
     while let Ok((stream, _)) = listener.accept().await {
@@ -91,7 +94,7 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
         let steam_tx = ctx.steam_tx.read().await;
         if let Some(steam_tx) = steam_tx.as_ref() {
             if let Ok(mut req) = serde_json::from_str::<RpcRequest>(&msg_text) {
-                req.secret = Some("Secret!".to_string());
+                req.secret = Some(&ctx.steam_secret);
                 let message_id = ctx.last_message_id.fetch_add(1, Ordering::Relaxed);
                 req.message_id = Some(message_id);
 
@@ -161,6 +164,7 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
                 }
             }
             msg = rx.recv() => {
+                // Message from other handler
                 match msg {
                     Some(msg) => {
                         if let Err(e) = ws_stream.send(Message::text(msg)).await {
@@ -193,12 +197,12 @@ async fn handle_client_message(
 ) {
     let steam_tx = ctx.steam_tx.read().await;
     if let Some(steam_tx) = steam_tx.as_ref() {
-        let Ok(mut req) = serde_json::from_str::<RpcRequest>(&msg) else {
+        let Ok(mut req) = serde_json::from_str::<RpcRequest>(msg) else {
             log::error!("Failed to deserialize client message: {msg}");
             return;
         };
 
-        req.secret = Some("Secret!".to_string());
+        req.secret = Some(&ctx.steam_secret);
         req.message_id = Some(ctx.last_message_id.fetch_add(1, Ordering::Relaxed));
 
         let Ok(req) = serde_json::to_string(&req) else {
@@ -210,7 +214,6 @@ async fn handle_client_message(
             log::error!("Error sending message to Steam: {}", e);
             // Steam connection might be dead, reset the connection state
             ctx.connected.store(false, Ordering::Relaxed);
-            return;
         }
     } else {
         log::warn!("Steam connection not available");
@@ -226,7 +229,7 @@ async fn handle_client_message(
 }
 
 async fn handle_steam_message(ctx: Arc<Context>, msg: &Utf8Bytes) {
-    let Ok(mut req) = serde_json::from_str::<serde_json::Value>(&msg) else {
+    let Ok(mut req) = serde_json::from_str::<serde_json::Value>(msg) else {
         log::error!("Failed to deserialize steam message");
         return;
     };

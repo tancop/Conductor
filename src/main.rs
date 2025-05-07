@@ -1,3 +1,4 @@
+use crate::secrets::generate_secret;
 use cfg_if::cfg_if;
 use log::LevelFilter;
 use std::fs::File;
@@ -9,6 +10,7 @@ mod inject;
 mod message;
 mod payload;
 mod process;
+mod secrets;
 mod server;
 
 #[tokio::main]
@@ -92,15 +94,17 @@ async fn start() {
 
     log::debug!("Sending payload to URL: {debugger_url}");
 
+    let steam_secret = generate_secret();
+
     // Setup payload with port and secret
-    let payload = payload::make_payload(&payload, 7355, true, "Secret!".to_string());
+    let payload = payload::make_payload(&payload, 7355, true, steam_secret.clone());
 
     // Start server
     let addr = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "127.0.0.1:7355".to_string());
 
-    tokio::spawn(server::serve(addr));
+    tokio::spawn(server::serve(addr, steam_secret));
 
     // Inject payload into SteamWebHelper
     match inject::inject_payload(&debugger_url, &payload, 5).await {

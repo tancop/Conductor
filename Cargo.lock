@@ -196,6 +196,7 @@ dependencies = [
  "env_logger",
  "futures-util",
  "log",
+ "rand",
  "regex",
  "reqwest",
  "serde",
