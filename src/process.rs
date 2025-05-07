@@ -1,7 +1,6 @@
 use cfg_if::cfg_if;
-use std::fs::{File, OpenOptions};
-use std::io::{Read, Write};
-use std::str::FromStr;
+use std::fs::OpenOptions;
+use std::io::Write;
 use thiserror::Error;
 use tokio::process::Command;
 
@@ -63,6 +62,7 @@ pub async fn kill_other_instances() -> Result<(), KillError> {
         return Err(KillError::NotOpened(std::io::Error::last_os_error()));
     };
 
+    #[allow(unused_assignments)] // might be None on some platforms
     let mut cmd: Option<&mut Command> = None;
 
     cfg_if! {
