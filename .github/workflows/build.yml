@@ -32,23 +32,26 @@ jobs:
         with:
           bun-version: 1.2.10
 
-      - name: Setup UV
-        uses: astral-sh/setup-uv@v5.4.2
-
       - name: Prepare artifacts
+        if: runner.os == 'Windows'
         run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            export EXE_PATH="target/release/conductor.exe"
-          else
-            export EXE_PATH="target/release/conductor"
-          fi
-          
           bun install
           bun run build-release
           
           mkdir release
           
-          cp $EXE_PATH release
+          cp target/release/conductor.exe release
+          cp dist/payload.template.js release/dist
+
+      - name: Prepare artifacts
+        if: runner.os == 'Linux'
+        run: |
+          bun install
+          bun run build-release
+          
+          mkdir release
+          
+          cp target/release/conductor release
           cp dist/payload.template.js release/dist
 
       - name: Upload release zip
