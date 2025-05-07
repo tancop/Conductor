@@ -4,6 +4,7 @@
     },
     "scripts": {
         "build": "tsc --noEmit && esbuild src/js/payload.template.ts --bundle --minify --outfile=dist/payload.template.js && cargo build",
+        "build-release": "tsc --noEmit && esbuild src/js/payload.template.ts --bundle --minify --outfile=dist/payload.template.js && cargo build --release",
         "dev": "esbuild src/js/payload.template.ts --bundle --outfile=dist/payload.template.js && RUST_LOG=debug cargo run"
     },
     "devDependencies": {

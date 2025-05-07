@@ -10,79 +10,48 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on:
+      - ubuntu-latest
+      - windows-latest
 
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v2
-      with:
-        bun-version: 1.2.10
-      
-    - name: Setup UV
-      uses: astral-sh/setup-uv@v5.4.2
+      - uses: actions/checkout@v4
 
-    - name: Prepare artifacts
-      run: |
-        echo "Building Conductor"
-        
-        bun install
-        bun run build
+      - name: Load cargo cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-        cd dist
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.10
 
-        # Remove .whl extension
-        whl_file=$(find . -name "*.whl" -print -quit)
-        whl_base_name="$(echo ${whl_file%.*} | cut -c 3-)"
+      - name: Setup UV
+        uses: astral-sh/setup-uv@v5.4.2
 
-        # Remove .tar.gz extension
-        src_file=$(find . -name "*.tar.gz" -print -quit)
-        without_gz="${src_file%.*}"
-        src_base_name="$(echo ${without_gz%.*} | cut -c 3-)"
+      - name: Prepare artifacts
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            export EXE_PATH="target/release/conductor.exe"
+          else
+            export EXE_PATH="target/release/conductor"
+          fi
+          
+          bun install
+          bun run build-release
+          
+          mkdir release
+          
+          cp $EXE_PATH release
+          cp dist/payload.template.js release/dist
 
-        # Set modify time
-        echo "Setting file modify time"
-        TZ=UTC touch -d "2020-02-02 02:00" $whl_file
-        TZ=UTC touch -d "2020-02-02 02:00" $src_file
-
-        cd ..
-
-        home_prefix="$(echo $PWD)"
-
-        # Unzip wheel to temp folder
-        echo "Unzipping wheel to temp/"
-        unzip "dist/${whl_file}" -d temp
-        cd temp
-
-        # Remove wheel metadata
-        echo "Removing wheel metadata at temp/${src_base_name}.dist-info/"
-        rm -fr "${src_base_name}.dist-info/"
-
-        # Export archive names
-        echo "Exporting archive names"
-        echo "WHEEL_PATH=${home_prefix}/dist/${whl_base_name}.whl" >> "$GITHUB_ENV"
-        echo "SDIST_PATH=${home_prefix}/dist/${src_base_name}.tar.gz" >> "$GITHUB_ENV"
-        echo "RELEASE_PATH=${home_prefix}/temp" >> "$GITHUB_ENV"
-
-        commit=$(echo "$GITHUB_SHA" | cut -c 1-7)
-
-        echo "RELEASE_NAME=${src_base_name}-${commit}" >> "$GITHUB_ENV"
-
-    - name: Upload release zip
-      uses: actions/upload-artifact@v4.6.2
-      with:
-        name: "${{ env.RELEASE_NAME }}-release"
-        path: "${{ env.RELEASE_PATH }}"
-
-    - name: Upload source archive
-      uses: actions/upload-artifact@v4.6.2
-      with:
-        name: "${{ env.RELEASE_NAME }}-sdist"
-        path: "${{ env.SDIST_PATH }}"
-
-    - name: Upload Python wheel
-      uses: actions/upload-artifact@v4.6.2
-      with:
-        name: "${{ env.RELEASE_NAME }}-wheel"
-        path: "${{ env.WHEEL_PATH }}"
+      - name: Upload release zip
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: "release"
+          path: "release"
