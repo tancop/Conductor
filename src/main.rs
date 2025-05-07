@@ -1,5 +1,6 @@
 use crate::secrets::generate_secret;
 use cfg_if::cfg_if;
+use clap::Parser;
 use log::LevelFilter;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -13,8 +14,20 @@ mod process;
 mod secrets;
 mod server;
 
+#[derive(Parser)]
+struct Args {
+    #[arg(short, long, default_value_t = 7355)]
+    port: u16,
+    #[arg(short, long)]
+    secret: Option<String>,
+    #[arg(short, long)]
+    address: Option<String>,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    let args = Args::parse();
+
     // Setup logger
     let filter =
         LevelFilter::from_str(&std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned()))
@@ -36,7 +49,7 @@ async fn main() -> Result<(), Error> {
     log::info!("Starting Conductor...");
 
     // Spawn server task
-    tokio::spawn(start());
+    tokio::spawn(start(args.port, args.secret, args.address));
 
     // Wait for exit event
     cfg_if! {
@@ -57,7 +70,7 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-async fn start() {
+async fn start(port: u16, secret: Option<String>, address: Option<String>) {
     // Kill other instances if running
     if let Err(e) = process::kill_other_instances().await {
         log::error!("{}", e);
@@ -97,12 +110,10 @@ async fn start() {
     let steam_secret = generate_secret();
 
     // Setup payload with port and secret
-    let payload = payload::make_payload(&payload, 7355, true, steam_secret.clone());
+    let payload = payload::make_payload(&payload, port, true, steam_secret.clone());
 
     // Start server
-    let addr = std::env::args()
-        .nth(1)
-        .unwrap_or_else(|| "127.0.0.1:7355".to_string());
+    let addr = address.unwrap_or(format!("localhost:{port}"));
 
     tokio::spawn(server::serve(addr, steam_secret));
 

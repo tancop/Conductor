@@ -1,6 +1,6 @@
 use regex::{Captures, Regex};
 
-pub fn make_payload(template: &str, port: i32, replace: bool, secret: String) -> String {
+pub fn make_payload(template: &str, port: u16, replace: bool, secret: String) -> String {
     let re = Regex::new(r"(\$REPLACE)|(\$SECRET)|(\$PORT)").unwrap();
 
     let payload = re

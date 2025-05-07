@@ -23,7 +23,7 @@ pub async fn serve(addr: String, steam_secret: String) {
     // Create the event loop and TCP listener we'll accept connections on
     let try_socket = TcpListener::bind(&addr).await;
     let listener = try_socket.expect("Failed to bind");
-    log::info!("Listening on: {}", addr);
+    log::info!("Listening on {}", addr);
 
     let ctx = Arc::new(Context {
         connected: false.into(),
@@ -58,11 +58,11 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
     let mut is_steam = false;
 
     // Handle initial message
-    let initial_msg = ws_stream.next().await;
-    if initial_msg.is_none() {
+    let Some(initial_msg) = ws_stream.next().await else {
+        log::error!("Peer connected without sending initial message");
         return;
-    }
-    let initial_msg = initial_msg.unwrap();
+    };
+
     let initial_msg = match initial_msg {
         Ok(msg) => msg,
         Err(e) => {
