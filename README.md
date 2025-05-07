@@ -8,26 +8,29 @@ install, passwords or complicated commands. Thanks to [Decky Loader](https://git
 for the injection method.
 
 > [!WARNING]
-> Conductor uses TCP port 8080 to communicate with Steam and 7355 to listen for user requests. If you're running
-> something that uses these ports at the same time you need to turn it off or change its settings.
+> Conductor uses TCP port 8080 to connect with Steam and another one (7355 by default) to communicate
+> with clients. If you're running something that uses these ports at the same time you need to turn it
+> off or change its settings.
 
 ## 💽 Installing
 
-1. Install Python with the [`websockets`](https://pypi.org/project/websockets/) and [
-   `requests`](https://pypi.org/project/requests/) packages
-2. Download a release zip and unpack anywhere you want
-3. Run Conductor
-4. Restart Steam if it's running
+1. Download a release zip and unpack anywhere you want
+2. Run Conductor. That's it.
 
 ## ⚡ Running
 
-Open `run.ps1` or `run.sh` depending on your system. Conductor will connect to Steam right away if it's running, or wait
-for it to start. You might get a UAC prompt the first time running it on Windows, this is necessary to enable CEF remote
-debugging and inject code into the Steam web helper.
+Click on the executable or run it on the command line. There are some useful command line options:
+
+```
+-p, --port <PORT>        Port used for opening connections on localhost. The Steam payload will always connect to `ws://localhost:[port]` [default: 7355]
+-s, --secret <SECRET>    Secret for client authentication. If this option is set all requests need to have a `secret` field with the provided value
+-a, --address <ADDRESS>  Hostname used for client connections. Defaults to `localhost:[port]`
+```
 
 ## 🔗 Connecting
 
-You can connect to the server at `ws://[your ip]:7355`. Requests should be JSON with the command name and arguments:
+With default settings you can connect to the server over WebSockets at `ws://localhost:7355`. Requests should be JSON
+with the command name and arguments:
 
 ```json
 {
@@ -39,8 +42,8 @@ You can connect to the server at `ws://[your ip]:7355`. Requests should be JSON 
 ```
 
 Conductor will respond over the socket with a JSON object. The `success` property lets you know if the command worked or
-not. In case of failure you can get the reason by looking at `error`. When listing installed games with
-`GetInstalledGames` the response can look like this:
+not. If it failed you can get the reason by looking at `error`. For example, when listing installed games with
+`GetInstalledApps` the response can look like this:
 
 ```json
 {
@@ -53,24 +56,18 @@ not. In case of failure you can get the reason by looking at `error`. When listi
 }
 ```
 
-You can find all the supported commands in [api.ts](src/js/api.ts). This documentation is always up to date thanks
-to
-some TypeScript magic, so you can trust it with your life (at your own risk of course).
+You can find all the supported commands in [api.ts](src/js/api.ts).
 
 ## 🔒 Authentication
 
-You can control access to Conductor by creating a file named `secrets.json` next to `main.py`. Put your API secrets in
-it like this:
+You can control access to the API by passing a client secret as a command line parameter:
 
-```json
-[
-  "qyHY9btYEm+6zby4KdGfDQ==",
-  "vkn0CpLHzMwbUAfmJgiGTA=="
-]
+```
+conductor -s "dQw4w9WgXcQ"
 ```
 
-If you set any secrets every request needs a `secret` field. Commands with no secret or an invalid value will get
-rejected.
+If you set a secret every client request needs to pass it in the `secret` field. Commands with no secret or the wrong
+value will be rejected.
 
 ```json
 {
@@ -78,21 +75,21 @@ rejected.
   "args": {
     "appId": 730
   },
-  "secret": "qyHY9btYEm+6zby4KdGfDQ=="
+  "secret": "dQw4w9WgXcQ"
 }
 ```
 
 ## 🛠️ Building
 
-1. Install [uv](https://astral.sh/uv) and a JS package manager like [Bun](https://bun.sh), [pnpm](https://pnpm.io)
-   or [npm](https://nodejs.org)
+1. Install [Rust](https://www.rust-lang.org/tools/install) and a JS package manager
+   like [Bun](https://bun.sh), [pnpm](https://pnpm.io) or [npm](https://nodejs.org)
 2. Clone the repo or download source code as a zip
 3. Build and run with `bun run dev` or type check and build for production with `bun run build`. Replace `bun` with your
-   package manager if you're using a different one
+   package manager if you're using a different one.
 
 ## 💻 Example Code
 
-Run this in your browser console. If Counter-Strike 2 is installed, this opens it and prints `{"success": true}` to the
+If Counter-Strike 2 is installed, this opens it and prints `{"success": true}` to the
 console. If it's not, prints `{"success": false, "error": "App with ID 730 not installed"}`
 
 ```javascript
