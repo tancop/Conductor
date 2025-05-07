@@ -1,8 +1,8 @@
 interface Window {
-	/**
-	 * Injected WebSocket instance used to communicate with the Python server
-	 */
-	rpc: WebSocket | undefined;
+    /**
+     * Injected WebSocket instance used to communicate with the Python server
+     */
+    rpc: WebSocket | undefined;
 }
 
 /**

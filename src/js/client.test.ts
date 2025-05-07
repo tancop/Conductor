@@ -1,5 +1,5 @@
-import type {Command, Returns, RpcRequest, RpcResponse} from "./api";
-import {AppType} from "./api";
+import type { Command, Returns, RpcRequest, RpcResponse } from "./api";
+import { AppType } from "./api";
 
 /**
  * Type safe RPC client for Conductor. Handles the tricky parts for you so you can just do this:
@@ -70,7 +70,7 @@ class Client {
                 }),
             );
         } else {
-            this.ws.send(JSON.stringify({messageId, ...req}));
+            this.ws.send(JSON.stringify({ messageId, ...req }));
         }
 
         return new Promise((resolve) => {
@@ -127,7 +127,7 @@ if (res.success) {
                     })
                     .then((app) => {
                         if (app.success) {
-                            apps.push({id: appId, ...app});
+                            apps.push({ id: appId, ...app });
                         } else {
                             console.error("GetAppInfo failed");
                         }

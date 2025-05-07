@@ -7,7 +7,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import type {RpcHandlers} from "./api";
+import type { RpcHandlers } from "./api";
 
 (() => {
     console.log("ready:", App.GetServicesInitialized());
@@ -244,10 +244,10 @@ import type {RpcHandlers} from "./api";
 
             SteamClient.UI.SetUIMode(msg.args.mode);
 
-            return {success: true};
+            return { success: true };
         },
         GetUIMode: async () => {
-            return {success: true, mode: await SteamClient.UI.GetUIMode()};
+            return { success: true, mode: await SteamClient.UI.GetUIMode() };
         },
         GetAppInfo: async (msg) => {
             if (!msg.args.appId) {
