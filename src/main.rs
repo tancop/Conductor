@@ -69,17 +69,8 @@ async fn main() -> Result<(), Error> {
     tokio::spawn(start(args.port, args.secret, args.address));
 
     // Wait for exit event
-    cfg_if! {
-        if #[cfg(windows)] {
-            tokio::select! {
-                _ = tokio::signal::ctrl_c() => {},
-                _ = tokio::signal::windows::ctrl_close() => {},
-            }
-        } else {
-            tokio::select! {
-                _ = tokio::signal::ctrl_c() => {},
-            }
-        }
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => {},
     }
 
     log::info!("Goodbye!");
