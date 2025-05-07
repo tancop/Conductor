@@ -70,10 +70,10 @@ async fn main() -> Result<(), Error> {
 
     // Wait for exit event
     cfg_if! {
-        if #[cfg(unix)] {
+        if #[cfg(windows)] {
             tokio::select! {
                 _ = tokio::signal::ctrl_c() => {},
-                _ = tokio::signal::unix::ctrl_close() => {},
+                _ = tokio::signal::windows::ctrl_close() => {},
             }
         } else {
             tokio::select! {
