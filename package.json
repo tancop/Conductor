@@ -1,13 +1,13 @@
 {
-    "dependencies": {
-        "esbuild": "^0.25.2"
-    },
-    "scripts": {
-        "build": "tsc --noEmit && esbuild src/js/payload.template.ts --bundle --minify --outfile=dist/payload.template.js && cargo build",
-        "dev": "esbuild src/js/payload.template.ts --bundle --outfile=dist/payload.template.js && RUST_LOG=debug cargo run"
-    },
-    "devDependencies": {
-        "@biomejs/biome": "^1.9.4"
-    },
-    "trustedDependencies": ["@biomejs/biome"]
+	"dependencies": {
+		"esbuild": "^0.25.2"
+	},
+	"scripts": {
+		"build": "tsc --noEmit && esbuild src/js/payload.template.ts --bundle --minify --outfile=dist/payload.template.js && cargo build",
+		"dev": "esbuild src/js/payload.template.ts --bundle --outfile=dist/payload.template.js && RUST_LOG=debug cargo run"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4"
+	},
+	"trustedDependencies": ["@biomejs/biome"]
 }

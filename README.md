@@ -53,7 +53,8 @@ not. In case of failure you can get the reason by looking at `error`. When listi
 }
 ```
 
-You can find all the supported commands in [api.d.ts](./api.d.ts). This documentation is always up to date thanks to
+You can find all the supported commands in [api.d.ts](./src/js/api.d.ts). This documentation is always up to date thanks
+to
 some TypeScript magic, so you can trust it with your life (at your own risk of course).
 
 ## 🔒 Authentication
