@@ -40,8 +40,8 @@ jobs:
           
           mkdir release
           
-          cp target/release/conductor.exe release
-          cp dist/payload.template.js release/dist
+          cp target/release/conductor.exe release/conductor.exe
+          cp dist/payload.template.js release/dist/payload.template.js
 
       - name: Prepare artifacts
         if: runner.os == 'Linux'
@@ -51,8 +51,8 @@ jobs:
           
           mkdir release
           
-          cp target/release/conductor release
-          cp dist/payload.template.js release/dist
+          cp target/release/conductor release/conductor
+          cp dist/payload.template.js release/dist/payload.template.js
 
       - name: Upload release zip
         uses: actions/upload-artifact@v4.6.2
