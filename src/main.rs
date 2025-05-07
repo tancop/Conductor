@@ -207,7 +207,7 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
         let steam_tx = ctx.steam_tx.read().await;
         if let Some(steam_tx) = steam_tx.as_ref() {
             if let Ok(mut req) = serde_json::from_str::<RpcRequest>(&msg_text) {
-                req.secret = None;
+                req.secret = Some("Secret!".to_string());
                 let message_id = ctx.last_message_id.fetch_add(1, Ordering::Relaxed);
                 req.message_id = Some(message_id);
 
@@ -263,18 +263,28 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
                             // Handle Steam messages
                             if let Ok(mut req) = serde_json::from_str::<serde_json::Value>(&msg_text) {
                                 if let Some(req) = req.as_object_mut() {
-                                    if let Some(id) = req.get("message_id").and_then(|id| id.as_u64().map(|id| id as u32)) {
-                                        req.remove("message_id");
+                                    if let Some(id) = req.get("messageId").and_then(|id| id.as_u64().map(|id| id as u32)) {
+                                        req.remove("messageId");
 
                                         if let Some(tx) = ctx.message_senders.read().await.get(&id) {
                                             if let Ok(msg) = serde_json::to_string(req) {
                                                 if let Err(e) = tx.send(msg) {
                                                     log::error!("Error sending message to client: {}", e);
                                                 }
+                                            } else {
+                                                log::error!("Failed to serialize steam message");
                                             }
+                                        } else {
+                                            log::warn!("No client channel found for id {id}");
                                         }
+                                    } else {
+                                        log::error!("Steam message has no ID");
                                     }
+                                } else {
+                                    log::error!("Steam message is not a JSON object");
                                 }
+                            } else {
+                                log::error!("Failed to deserialize steam message");
                             }
                         } else {
                             log::debug!("Received client message: '{}'", msg_text);
@@ -282,7 +292,7 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
                             let steam_tx = ctx.steam_tx.read().await;
                             if let Some(steam_tx) = steam_tx.as_ref() {
                                 if let Ok(mut req) = serde_json::from_str::<RpcRequest>(&msg_text) {
-                                    req.secret = None;
+                                    req.secret = Some("Secret!".to_string());
                                     req.message_id = Some(ctx.last_message_id.fetch_add(1, Ordering::Relaxed));
 
                                     if let Ok(req) = serde_json::to_string(&req) {
