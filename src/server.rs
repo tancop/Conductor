@@ -17,9 +17,10 @@ struct Context {
     message_senders: RwLock<HashMap<u32, UnboundedSender<String>>>,
     message_ids: RwLock<HashMap<u32, u32>>,
     steam_secret: String,
+    client_secret: Option<String>,
 }
 
-pub async fn serve(addr: String, steam_secret: String) {
+pub async fn serve(addr: String, steam_secret: String, client_secret: Option<String>) {
     // Create the event loop and TCP listener we'll accept connections on
     let try_socket = TcpListener::bind(&addr).await;
     let listener = try_socket.expect("Failed to bind");
@@ -32,6 +33,7 @@ pub async fn serve(addr: String, steam_secret: String) {
         message_senders: HashMap::new().into(),
         message_ids: HashMap::new().into(),
         steam_secret,
+        client_secret,
     });
 
     while let Ok((stream, _)) = listener.accept().await {
@@ -95,6 +97,32 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
         let steam_tx = ctx.steam_tx.read().await;
         if let Some(steam_tx) = steam_tx.as_ref() {
             if let Ok(mut req) = serde_json::from_str::<RpcRequest>(&msg_text) {
+                if let Some(secret) = &ctx.client_secret {
+                    if req.secret.is_none() {
+                        log::warn!("Received message without secret: {}", msg_text);
+                        send_message(
+                            &mut ws_stream,
+                            &json!({
+                                "success": false,
+                                "error": "A secret is required",
+                            }),
+                        )
+                        .await;
+                        return;
+                    } else if req.secret != Some(secret) {
+                        log::warn!("Received message with wrong secret: {}", msg_text);
+                        send_message(
+                            &mut ws_stream,
+                            &json!({
+                                "success": false,
+                                "error": "Wrong secret! Are you a hacker?",
+                            }),
+                        )
+                        .await;
+                        return;
+                    }
+                }
+
                 req.secret = Some(&ctx.steam_secret);
 
                 let message_id = ctx.last_message_id.fetch_add(1, Ordering::Relaxed);

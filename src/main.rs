@@ -48,6 +48,10 @@ async fn main() -> Result<(), Error> {
 
     log::info!("Starting Conductor...");
 
+    if args.secret.is_some() {
+        log::info!("Authentication enabled");
+    }
+
     // Spawn server task
     tokio::spawn(start(args.port, args.secret, args.address));
 
@@ -115,7 +119,7 @@ async fn start(port: u16, secret: Option<String>, address: Option<String>) {
     // Start server
     let addr = address.unwrap_or(format!("localhost:{port}"));
 
-    tokio::spawn(server::serve(addr, steam_secret));
+    tokio::spawn(server::serve(addr, steam_secret, secret));
 
     // Inject payload into SteamWebHelper
     match inject::inject_payload(&debugger_url, &payload, 5).await {
