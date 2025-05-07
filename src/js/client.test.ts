@@ -1,17 +1,17 @@
-import type { RpcResponse, Command, RpcRequest, Returns } from "./api.d";
+import type { Command, Returns, RpcRequest, RpcResponse } from "./api.d";
 import { AppType } from "./api.d";
 
 /**
  * Type safe RPC client for Conductor. Handles the tricky parts for you so you can just do this:
  *
  * ```
- *	let res = await client.call({
- *		command: "GetApps",
- *		args: {
- *			typeFilter: [AppType.Game, AppType.Shortcut],
- *			installedOnly: true,
- *		},
- *	});
+ *    let res = await client.call({
+ *        command: "GetApps",
+ *        args: {
+ *            typeFilter: [AppType.Game, AppType.Shortcut],
+ *            installedOnly: true,
+ *        },
+ *    });
  *
  * client.close();
  * ```
