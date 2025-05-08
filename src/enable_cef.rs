@@ -1,6 +1,8 @@
 use cfg_if::cfg_if;
 use std::fs::File;
 use std::io::ErrorKind;
+#[allow(unused_imports)] // only used on Windows
+use std::path::Path;
 
 pub fn enable_cef_debugging() -> Result<(), std::io::Error> {
     #[allow(unused_assignments)] // might be None on some platforms
