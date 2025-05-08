@@ -1,6 +1,5 @@
 use crate::enable_cef::enable_cef_debugging;
 use crate::secrets::generate_secret;
-use cfg_if::cfg_if;
 use clap::Parser;
 use log::LevelFilter;
 use std::fs::File;
@@ -63,7 +62,13 @@ async fn main() -> Result<(), Error> {
         log::info!("Authentication enabled");
     }
 
-    enable_cef_debugging();
+    match enable_cef_debugging() {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("Failed to enable CEF debugging: {e}");
+            return Err(e);
+        }
+    };
 
     // Spawn server task
     tokio::spawn(start(args.port, args.secret, args.address));
