@@ -1,5 +1,5 @@
 <component name="CopyrightManager">
-  <settings>
+  <settings default="mpl">
     <LanguageOptions name="JavaScript">
       <option name="fileTypeOverride" value="1" />
     </LanguageOptions>
