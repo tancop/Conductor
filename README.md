@@ -15,6 +15,9 @@ to [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) for the inj
 1. Download a release zip and unpack anywhere you want
 2. Run the app. That's it.
 
+Windows Defender might flag the file as `Behavior:Win32/DefenseEvasion.A!ml` sometimes. This is a false positive AI
+detection that comes from using `taskkill` to terminate any other instance running at the same time.
+
 ## ⚡ Running
 
 Click on the executable or run it on the command line. You can configure Conductor by editing `settings.toml`:
