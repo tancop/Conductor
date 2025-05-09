@@ -2,29 +2,27 @@
 
 ## 📘 About
 
-Conductor lets you automate Steam from your browser or over the network. Install and run games, manage your libraries,
-add non-Steam games without restarting and do what `steamcmd` don't, all without changing Steam's files. No manual
-install, passwords or complicated commands. Thanks to [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader)
-for the injection method.
+Conductor lets you automate Steam from anywhere. Install and run apps, manage your libraries, add non-Steam games
+without restarting and more, locally or over the internet. No manual install, passwords or complicated commands. Thanks
+to [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) for the injection method.
 
 > [!WARNING]
-> Conductor uses TCP port 8080 to connect with Steam and another one (7355 by default) to communicate
-> with clients. If you're running something that uses these ports at the same time you need to turn it
-> off or change its settings.
+> Conductor uses TCP port 8080 to connect with Steam. If you're running something that uses it at the same time you need
+> to turn it off or change its settings.
 
 ## 💽 Installing
 
 1. Download a release zip and unpack anywhere you want
-2. Run Conductor. That's it.
+2. Run the app. That's it.
 
 ## ⚡ Running
 
-Click on the executable or run it on the command line. There are some useful command line options:
+Click on the executable or run it on the command line. You can configure Conductor by editing `settings.toml`:
 
-```
--p, --port <PORT>        Port used for opening connections on localhost. The Steam payload will always connect to `ws://localhost:[port]` [default: 7355]
--s, --secret <SECRET>    Secret for client authentication. If this option is set all requests need to have a `secret` field with the provided value
--a, --address <ADDRESS>  Hostname used for client connections. Defaults to `localhost:[port]`
+```toml
+[conductor]
+hostname = "localhost:7355" # host name clients use to connect
+payload_path = "dist/payload.template.js" # path to payload js file, relative to the executable
 ```
 
 ## 🔗 Connecting
@@ -56,18 +54,20 @@ not. If it failed you can get the reason by looking at `error`. For example, whe
 }
 ```
 
-You can find all the supported commands in [api.ts](src/js/api.ts).
+You can find a list with all the supported commands in [api.ts](src/js/api.ts).
 
 ## 🔒 Authentication
 
-You can control access to the API by passing a client secret as a command line parameter:
+You can control access to the API by setting some tokens in `settings.toml`:
 
-```
-conductor -s "dQw4w9WgXcQ"
+```toml
+[auth]
+enabled = true
+tokens = ["dQw4w9WgXcQ", "694201337"]
 ```
 
-If you set a secret every client request needs to pass it in the `secret` field. Commands with no secret or the wrong
-value will be rejected.
+If you turn on authentication every client request needs to pass one of the listed tokens in the `secret` field.
+Commands with no secret or the wrong value will be rejected.
 
 ```json
 {
