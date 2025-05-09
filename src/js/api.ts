@@ -7,15 +7,6 @@
  *  file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/*
- *  api.ts
- *  (c) 2025 Teodor Potancok
- *
- *  This Source Code Form is subject to the terms of the Mozilla Public
- *  License, v. 2.0. If a copy of the MPL was not distributed with this
- *  file, You can obtain one at https://mozilla.org/MPL/2.0/.
- */
-
 import type { UIMode } from "./steam";
 
 /**
@@ -29,11 +20,9 @@ import type { UIMode } from "./steam";
  * }
  *
  * // returns:
- *
  * [
  *     { driveName: 'C:', userLabel: 'main', },
  * ]
- *
  * ```
  */
 type RpcCommands = {
