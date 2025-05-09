@@ -7,6 +7,7 @@
  *  file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use crate::config::AuthConfig;
 use crate::message::RpcRequest;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
@@ -26,14 +27,23 @@ struct Context {
     message_senders: RwLock<HashMap<u32, UnboundedSender<String>>>,
     message_ids: RwLock<HashMap<u32, u32>>,
     steam_secret: String,
-    client_secret: Option<String>,
+    auth_enabled: bool,
+    client_secrets: Option<Vec<String>>,
 }
 
-pub async fn serve(addr: String, steam_secret: String, client_secret: Option<String>) {
+pub async fn serve(addr: String, steam_secret: String, auth_cfg: Option<AuthConfig>) {
     // Create the event loop and TCP listener we'll accept connections on
     let try_socket = TcpListener::bind(&addr).await;
     let listener = try_socket.expect("Failed to bind");
     log::info!("Listening on {}", addr);
+
+    let mut auth_enabled = false;
+
+    if let Some(cfg) = &auth_cfg {
+        if cfg.enabled {
+            auth_enabled = true;
+        }
+    }
 
     let ctx = Arc::new(Context {
         connected: false.into(),
@@ -42,7 +52,8 @@ pub async fn serve(addr: String, steam_secret: String, client_secret: Option<Str
         message_senders: HashMap::new().into(),
         message_ids: HashMap::new().into(),
         steam_secret,
-        client_secret,
+        auth_enabled,
+        client_secrets: auth_cfg.and_then(|cfg| cfg.tokens),
     });
 
     while let Ok((stream, _)) = listener.accept().await {
@@ -106,7 +117,7 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
         let steam_tx = ctx.steam_tx.read().await;
         if let Some(steam_tx) = steam_tx.as_ref() {
             if let Ok(mut req) = serde_json::from_str::<RpcRequest>(&msg_text) {
-                if let Some(secret) = &ctx.client_secret {
+                if ctx.auth_enabled {
                     if req.secret.is_none() {
                         log::warn!("Received message without secret: {}", msg_text);
                         send_message(
@@ -118,7 +129,15 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
                         )
                         .await;
                         return;
-                    } else if req.secret != Some(secret) {
+                    }
+
+                    if ctx
+                        .client_secrets
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .all(|secret| secret != req.secret.unwrap())
+                    {
                         log::warn!("Received message with wrong secret: {}", msg_text);
                         send_message(
                             &mut ws_stream,

@@ -23,7 +23,7 @@ import type { RpcHandlers } from "./api";
 
     console.log("Opening new socket");
 
-    let ws = new WebSocket("ws://localhost:$PORT");
+    let ws = new WebSocket("ws://$HOSTNAME");
 
     function getFields<T, K extends (keyof T)[]>(
         obj: T,

@@ -42,6 +42,7 @@ jobs:
           mkdir release/dist
           
           cp target/release/conductor.exe release/
+          cp public/settings.toml release/
           cp dist/payload.template.js release/dist/
 
       - name: Prepare artifacts
@@ -54,6 +55,7 @@ jobs:
           mkdir release/dist
           
           cp target/release/conductor release/
+          cp public/settings.toml release/
           cp dist/payload.template.js release/dist/
 
       - name: Upload release zip

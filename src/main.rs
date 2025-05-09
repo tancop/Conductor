@@ -7,6 +7,7 @@
  *  file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+use crate::config::Config;
 use crate::enable_cef::enable_cef_debugging;
 use crate::secrets::generate_secret;
 use clap::Parser;
@@ -16,6 +17,7 @@ use std::io::{Read, Write};
 use std::str::FromStr;
 use tokio::io::Error;
 
+mod config;
 mod enable_cef;
 mod inject;
 mod message;
@@ -27,25 +29,17 @@ mod server;
 #[derive(Parser)]
 #[command(
     name = "conductor",
-    about = "Conductor exposes an easy to use WebSockets API for controlling the Steam client."
+    about = "Conductor lets you control the Steam client over WebSockets."
 )]
 struct Args {
-    /// Port used for opening connections on localhost. The Steam payload will always connect
-    /// to `ws://localhost:[port]`.
-    #[arg(short, long, default_value_t = 7355)]
-    port: u16,
-    /// Secret for client authentication. If this option is set all requests need to have a
-    /// `secret` field with the provided value.
-    #[arg(short, long)]
-    secret: Option<String>,
-    /// Hostname used for client connections. Defaults to `localhost:[port]`.
-    #[arg(short, long)]
-    address: Option<String>,
+    /// Path to the settings file
+    #[arg(short, long, default_value_t = String::from("./settings.toml"))]
+    settings_path: String,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let args = Args::parse();
+    let settings_path = Args::parse().settings_path;
 
     // Setup logger
     let filter =
@@ -65,10 +59,33 @@ async fn main() -> Result<(), Error> {
         })
         .init();
 
+    let mut cfg = match Config::load(settings_path) {
+        Ok(c) => c,
+        Err(e) => {
+            log::error!("Failed to load config: {}", e);
+            std::process::exit(1);
+        }
+    };
+
     log::info!("Starting Conductor...");
 
-    if args.secret.is_some() {
-        log::info!("Authentication enabled");
+    if let Some(auth) = &mut cfg.auth {
+        if auth.enabled {
+            log::info!("Authentication enabled");
+
+            match &mut auth.tokens {
+                Some(vec) => {
+                    if vec.is_empty() {
+                        log::error!("No tokens found, add some or set `auth.enabled` to false");
+                        std::process::exit(1);
+                    }
+                }
+                None => {
+                    log::error!("No tokens found, add some or set `auth.enabled` to false");
+                    std::process::exit(1);
+                }
+            }
+        }
     }
 
     match enable_cef_debugging() {
@@ -80,7 +97,7 @@ async fn main() -> Result<(), Error> {
     };
 
     // Spawn server task
-    tokio::spawn(start(args.port, args.secret, args.address));
+    tokio::spawn(start(cfg));
 
     // Wait for exit event
     tokio::select! {
@@ -92,7 +109,7 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-async fn start(port: u16, secret: Option<String>, address: Option<String>) {
+async fn start(cfg: Config) {
     // Kill other instances if running
     if let Err(e) = process::kill_other_instances().await {
         log::error!("{}", e);
@@ -104,13 +121,18 @@ async fn start(port: u16, secret: Option<String>, address: Option<String>) {
         log::warn!("Failed to store PID: {}", e);
     }
 
+    let Ok(current_exe) = std::env::current_exe() else {
+        log::error!("Could not get current executable");
+        std::process::exit(1);
+    };
+
     // Find and open payload file
-    let Ok(current_dir) = std::env::current_dir() else {
+    let Some(current_dir) = current_exe.parent() else {
         log::error!("Could not get current directory");
         std::process::exit(1);
     };
 
-    let Ok(mut js_file) = File::open(current_dir.join("dist").join("payload.template.js")) else {
+    let Ok(mut js_file) = File::open(current_dir.join(cfg.conductor.payload_path)) else {
         log::error!("Could not open payload file at {}", current_dir.display());
         std::process::exit(1);
     };
@@ -132,12 +154,19 @@ async fn start(port: u16, secret: Option<String>, address: Option<String>) {
     let steam_secret = generate_secret();
 
     // Setup payload with port and secret
-    let payload = payload::make_payload(&payload, port, true, steam_secret.clone());
+    let payload = payload::make_payload(
+        &payload,
+        &cfg.conductor.hostname,
+        true,
+        steam_secret.clone(),
+    );
 
     // Start server
-    let addr = address.unwrap_or(format!("localhost:{port}"));
-
-    tokio::spawn(server::serve(addr, steam_secret, secret));
+    tokio::spawn(server::serve(
+        cfg.conductor.hostname,
+        steam_secret,
+        cfg.auth,
+    ));
 
     // Inject payload into SteamWebHelper
     match inject::inject_payload(&debugger_url, &payload, 5).await {
