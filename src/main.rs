@@ -6,7 +6,6 @@
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
  *  file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
-
 use crate::config::Config;
 use crate::enable_cef::enable_cef_debugging;
 use crate::secrets::generate_secret;
@@ -16,6 +15,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::str::FromStr;
 use tokio::io::Error;
+use tokio::sync::mpsc::UnboundedSender;
 
 mod config;
 mod enable_cef;
@@ -96,12 +96,21 @@ async fn main() -> Result<(), Error> {
         }
     };
 
+    // Internal exit signal
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<bool>();
+
     // Spawn server task
-    tokio::spawn(start(cfg));
+    tokio::spawn(start(cfg, tx));
 
     // Wait for exit event
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {},
+        success = rx.recv() => {
+            if success.is_some_and(|v| !v) {
+                log::error!("^^^^^^^^ Exiting because of critical error above");
+                std::process::exit(1);
+            }
+        }
     }
 
     log::info!("Goodbye!");
@@ -109,7 +118,7 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-async fn start(cfg: Config) {
+async fn start(cfg: Config, exit_tx: UnboundedSender<bool>) {
     // Kill other instances if running
     if let Err(e) = process::kill_other_instances().await {
         log::error!("{}", e);
@@ -123,30 +132,38 @@ async fn start(cfg: Config) {
 
     let Ok(current_exe) = std::env::current_exe() else {
         log::error!("Could not get current executable");
-        std::process::exit(1);
+        _ = exit_tx.send(false);
+        return;
     };
 
     // Find and open payload file
     let Some(current_dir) = current_exe.parent() else {
         log::error!("Could not get current directory");
-        std::process::exit(1);
+        _ = exit_tx.send(false);
+        return;
     };
 
     let Ok(mut js_file) = File::open(current_dir.join(cfg.conductor.payload_path)) else {
         log::error!("Could not open payload file at {}", current_dir.display());
-        std::process::exit(1);
+        _ = exit_tx.send(false);
+        return;
     };
 
     let mut payload = String::with_capacity(10_000);
     let Ok(_) = js_file.read_to_string(&mut payload) else {
         log::error!("Could not read payload file at {}", current_dir.display());
-        std::process::exit(1);
+        _ = exit_tx.send(false);
+        return;
     };
 
     // Get SteamWebHelper's debugger URL
-    let Some(debugger_url) = inject::try_get_debugger_url().await else {
-        log::error!("Could not find debugger url");
-        std::process::exit(1);
+    let debugger_url = match inject::try_get_debugger_url(None).await {
+        Ok(url) => url,
+        Err(e) => {
+            log::error!("Could not find debugger url: {e}");
+            _ = exit_tx.send(false);
+            return;
+        }
     };
 
     log::debug!("Sending payload to URL: {debugger_url}");
@@ -166,6 +183,8 @@ async fn start(cfg: Config) {
         cfg.conductor.hostname,
         steam_secret,
         cfg.auth,
+        payload.clone(),
+        exit_tx.clone(),
     ));
 
     // Inject payload into SteamWebHelper
@@ -173,7 +192,8 @@ async fn start(cfg: Config) {
         Ok(()) => {}
         Err(err) => {
             log::error!("{err}");
-            std::process::exit(1);
+            _ = exit_tx.send(false);
+            return;
         }
     }
 

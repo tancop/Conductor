@@ -8,12 +8,14 @@
  */
 
 use crate::config::AuthConfig;
+use crate::inject::{inject_payload, try_get_debugger_url};
 use crate::message::RpcRequest;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::RwLock;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
@@ -29,9 +31,17 @@ struct Context {
     steam_secret: String,
     auth_enabled: bool,
     client_secrets: Option<Vec<String>>,
+    payload: String,
+    exit_tx: UnboundedSender<bool>,
 }
 
-pub async fn serve(addr: String, steam_secret: String, auth_cfg: Option<AuthConfig>) {
+pub async fn serve(
+    addr: String,
+    steam_secret: String,
+    auth_cfg: Option<AuthConfig>,
+    payload: String,
+    exit_tx: UnboundedSender<bool>,
+) {
     // Create the event loop and TCP listener we'll accept connections on
     let try_socket = TcpListener::bind(&addr).await;
     let listener = try_socket.expect("Failed to bind");
@@ -54,6 +64,8 @@ pub async fn serve(addr: String, steam_secret: String, auth_cfg: Option<AuthConf
         steam_secret,
         auth_enabled,
         client_secrets: auth_cfg.and_then(|cfg| cfg.tokens),
+        payload,
+        exit_tx,
     });
 
     while let Ok((stream, _)) = listener.accept().await {
@@ -250,11 +262,40 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
 
     // Cleanup
     if is_steam {
-        log::info!("Steam connection terminated");
+        log::info!("Lost connection to Steam, reconnecting...");
         ctx.connected.store(false, Ordering::Relaxed);
         let mut steam_tx = ctx.steam_tx.write().await;
         steam_tx.take();
+
+        tokio::spawn(reconnect_to_steam(ctx.clone()));
     }
+}
+
+async fn reconnect_to_steam(ctx: Arc<Context>) {
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    let debugger_url = match try_get_debugger_url(Some(5)).await {
+        Ok(url) => url,
+        Err(err) => {
+            log::error!("Failed to reconnect: {err}");
+            _ = ctx.exit_tx.send(false);
+            return;
+        }
+    };
+
+    if let Err(err) = inject_payload(&debugger_url, &ctx.payload, 5).await {
+        log::error!("Failed to reconnect: {err}");
+        _ = ctx.exit_tx.send(false);
+        return;
+    }
+
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    if !ctx.connected.load(Ordering::Relaxed) {
+        log::error!("Failed to reconnect to Steam");
+        _ = ctx.exit_tx.send(false);
+    }
+
+    log::info!("Reconnected to Steam!");
 }
 
 async fn handle_client_message(

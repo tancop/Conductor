@@ -44,7 +44,18 @@ async fn find_url(res: Result<Response, Error>) -> Option<String> {
 
     None
 }
-pub async fn try_get_debugger_url() -> Option<String> {
+
+#[derive(Debug, Error)]
+pub enum DebuggerUrlError {
+    #[error("Failed to create HTTP client")]
+    CreateClientFailed,
+    #[error("Max retries reached")]
+    MaxRetriesReached,
+}
+
+pub async fn try_get_debugger_url(max_tries: Option<u32>) -> Result<String, DebuggerUrlError> {
+    let mut tries_left = max_tries.unwrap_or(0);
+
     if let Ok(client) = reqwest::Client::builder()
         .timeout(Duration::from_millis(500))
         .build()
@@ -53,15 +64,22 @@ pub async fn try_get_debugger_url() -> Option<String> {
             let res = client.get("http://localhost:8080/json").send().await;
 
             if let Some(url) = find_url(res).await {
-                return Some(url);
+                return Ok(url);
             } else {
                 log::info!("Connection to Steam client failed, retrying...");
                 tokio::time::sleep(Duration::from_millis(1000)).await;
+
+                if max_tries.is_some() {
+                    tries_left -= 1;
+                    if tries_left == 0 {
+                        return Err(DebuggerUrlError::MaxRetriesReached);
+                    }
+                }
             }
         }
     }
 
-    None
+    Err(DebuggerUrlError::CreateClientFailed)
 }
 
 #[derive(Debug, Error)]
