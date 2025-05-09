@@ -109,6 +109,8 @@ pub async fn inject_payload(url: &str, payload: &str, max_tries: u32) -> Result<
             if let Ok(_) = write.send(Message::from(json.to_owned())).await {
                 log::debug!("Injected payload");
                 return Ok(());
+            } else {
+                tokio::time::sleep(Duration::from_millis(200)).await;
             }
         }
 

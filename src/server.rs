@@ -288,7 +288,7 @@ async fn reconnect_to_steam(ctx: Arc<Context>) {
         return;
     }
 
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    tokio::time::sleep(Duration::from_millis(700)).await;
 
     if !ctx.connected.load(Ordering::Relaxed) {
         log::error!("Failed to reconnect to Steam");
