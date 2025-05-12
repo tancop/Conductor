@@ -37,7 +37,7 @@ pub enum LoadError {
 }
 
 impl Config {
-    pub fn load(path: String) -> Result<Self, LoadError> {
+    pub fn load(path: &str) -> Result<Self, LoadError> {
         let file = match std::fs::read_to_string(path) {
             Ok(f) => f,
             Err(e) => return Err(LoadError::ReadFile(e)),

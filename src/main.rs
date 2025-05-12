@@ -58,10 +58,10 @@ async fn main() -> Result<(), Error> {
         })
         .init();
 
-    let mut cfg = match Config::load(settings_path) {
+    let mut cfg = match Config::load(&settings_path) {
         Ok(c) => c,
         Err(e) => {
-            log::error!("Failed to load config: {}", e);
+            log::error!("Failed to load config from {}: {}", settings_path, e);
             std::process::exit(1);
         }
     };
