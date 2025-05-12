@@ -107,7 +107,7 @@ class Client {
     }
 }
 
-let client = new Client("ws://localhost:7355", "qyHY9btYEm+6zby4KdGfDQ==");
+let client = new Client("ws://localhost:7355", "Secret!");
 
 let res = await client.call({
     command: "GetApps",
