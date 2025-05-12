@@ -137,7 +137,7 @@ type RpcCommands = {
         };
     };
     /**
-     * Sets Steam's UI mode. **This will disconnect Conductor for 1-2 seconds** if the mode changes.
+     * Sets Steam's UI mode. **This will disconnect Conductor for 1-2 seconds on Windows** if the mode changes.
      */
     SetUIMode: {
         args: {
