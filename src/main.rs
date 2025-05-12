@@ -140,6 +140,8 @@ async fn main() -> Result<(), Error> {
         }
     }
 
+    _ = inject::kill_running_instance(&debugger_url, 5).await;
+
     log::info!("Goodbye!");
 
     Ok(())
