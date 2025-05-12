@@ -22,7 +22,6 @@ mod enable_cef;
 mod inject;
 mod message;
 mod payload;
-mod process;
 mod secrets;
 mod server;
 
@@ -99,13 +98,41 @@ async fn main() -> Result<(), Error> {
     // Internal exit signal
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<bool>();
 
+    // Get SteamWebHelper's debugger URL
+    let debugger_url = match inject::try_get_debugger_url(None).await {
+        Ok(url) => url,
+        Err(e) => {
+            log::error!("Could not find debugger url: {e}");
+            std::process::exit(1);
+        }
+    };
+
+    if inject::is_another_instance_running(&debugger_url).await {
+        if cfg.conductor.replace_other_instances {
+            log::debug!("Replacing other instances");
+            match inject::kill_running_instance(&debugger_url, 5).await {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("Could not kill other instance: {e}");
+                    std::process::exit(1);
+                }
+            };
+        } else {
+            log::error!("Another instance is already running");
+            std::process::exit(1);
+        }
+    }
+
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
     // Spawn server task
-    tokio::spawn(start(cfg, tx));
+    tokio::spawn(start(cfg, tx, debugger_url.clone()));
 
     // Wait for exit event
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {},
         success = rx.recv() => {
+            _ = inject::kill_running_instance(&debugger_url, 5).await;
             if success.is_some_and(|v| !v) {
                 log::error!("^^^^^^^^ Exiting because of critical error above");
                 std::process::exit(1);
@@ -118,18 +145,8 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-async fn start(cfg: Config, exit_tx: UnboundedSender<bool>) {
-    // Kill other instances if running
-    if let Err(e) = process::kill_other_instances().await {
-        log::error!("{}", e);
-    }
-
+async fn start(cfg: Config, exit_tx: UnboundedSender<bool>, debugger_url: String) {
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
-    if let Err(e) = process::store_pid() {
-        log::warn!("Failed to store PID: {}", e);
-    }
-
     let Ok(current_exe) = std::env::current_exe() else {
         log::error!("Could not get current executable");
         _ = exit_tx.send(false);
@@ -154,16 +171,6 @@ async fn start(cfg: Config, exit_tx: UnboundedSender<bool>) {
         log::error!("Could not read payload file at {}", current_dir.display());
         _ = exit_tx.send(false);
         return;
-    };
-
-    // Get SteamWebHelper's debugger URL
-    let debugger_url = match inject::try_get_debugger_url(None).await {
-        Ok(url) => url,
-        Err(e) => {
-            log::error!("Could not find debugger url: {e}");
-            _ = exit_tx.send(false);
-            return;
-        }
     };
 
     log::debug!("Sending payload to URL: {debugger_url}");

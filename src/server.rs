@@ -349,8 +349,14 @@ async fn handle_client_message(
 }
 
 async fn handle_steam_message(ctx: Arc<Context>, msg: &Utf8Bytes) {
+    if msg.as_str() == "Terminate" {
+        log::info!("Received terminate message");
+        _ = ctx.exit_tx.send(true);
+        return;
+    }
+
     let Ok(mut req) = serde_json::from_str::<serde_json::Value>(msg) else {
-        log::error!("Failed to deserialize steam message");
+        log::error!("Failed to deserialize steam message: {msg}");
         return;
     };
 

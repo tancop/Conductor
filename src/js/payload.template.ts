@@ -25,6 +25,11 @@ import type { RpcHandlers } from "./api";
 
     let ws = new WebSocket("ws://$HOSTNAME");
 
+    window.terminate = () => {
+        window.rpc?.send("Terminate");
+        window.rpc = undefined;
+    };
+
     function getFields<T, K extends (keyof T)[]>(
         obj: T,
         fields: K | undefined,

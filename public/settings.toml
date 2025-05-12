@@ -1,3 +1,4 @@
 [conductor]
 hostname = "localhost:7355"
 payload_path = "dist/payload.template.js"
+replace_other_instances = false

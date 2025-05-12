@@ -82,6 +82,62 @@ pub async fn try_get_debugger_url(max_tries: Option<u32>) -> Result<String, Debu
     Err(DebuggerUrlError::CreateClientFailed)
 }
 
+#[derive(Deserialize)]
+struct TypeContainer {
+    r#type: String,
+}
+
+#[derive(Deserialize)]
+struct Wrapper {
+    result: TypeContainer,
+}
+
+#[derive(Deserialize)]
+struct InstanceCheckResult {
+    result: Wrapper,
+}
+
+pub async fn is_another_instance_running(url: &str) -> bool {
+    if let Ok((ws_stream, _)) = connect_async(url).await {
+        let (mut tx, mut rx) = ws_stream.split();
+
+        let msg = json!({
+            "id": 0,
+            "method": "Runtime.evaluate",
+            "params": {
+                "expression": "window.rpc",
+                "awaitPromise": true
+            }
+        });
+
+        let json = serde_json::ser::to_string(&msg).unwrap();
+
+        let Ok(_) = tx.send(Message::from(json.to_owned())).await else {
+            return false;
+        };
+
+        let Some(Ok(res)) = rx.next().await else {
+            return false;
+        };
+
+        let Ok(res) = res.into_text() else {
+            return false;
+        };
+
+        let Ok(res) = serde_json::from_str::<InstanceCheckResult>(&res) else {
+            return false;
+        };
+
+        if res.result.result.r#type == "undefined" {
+            return false;
+        }
+
+        return true;
+    }
+
+    false
+}
+
 #[derive(Debug, Error)]
 pub enum InjectError {
     #[error("Failed to connect with Steam client")]
@@ -90,9 +146,39 @@ pub enum InjectError {
     NotSent,
 }
 
+pub async fn kill_running_instance(url: &str, max_tries: u32) -> Result<(), InjectError> {
+    if let Ok((ws_stream, _)) = connect_async(url).await {
+        let (mut tx, _) = ws_stream.split();
+
+        let msg = json!({
+            "id": 1,
+            "method": "Runtime.evaluate",
+            "params": {
+                "expression": "window.terminate()",
+                "awaitPromise": true
+            }
+        });
+
+        let json = serde_json::ser::to_string(&msg).unwrap();
+
+        for _ in 0..max_tries {
+            if let Ok(_) = tx.send(Message::from(json.to_owned())).await {
+                log::debug!("Terminated other instance");
+                return Ok(());
+            } else {
+                tokio::time::sleep(Duration::from_millis(200)).await;
+            }
+        }
+
+        Err(InjectError::NotSent)
+    } else {
+        Err(InjectError::NotConnected)
+    }
+}
+
 pub async fn inject_payload(url: &str, payload: &str, max_tries: u32) -> Result<(), InjectError> {
     if let Ok((ws_stream, _)) = connect_async(url).await {
-        let (mut write, _) = ws_stream.split();
+        let (mut tx, _) = ws_stream.split();
 
         let msg = json!({
             "id": 1,
@@ -106,7 +192,7 @@ pub async fn inject_payload(url: &str, payload: &str, max_tries: u32) -> Result<
         let json = serde_json::ser::to_string(&msg).unwrap();
 
         for _ in 0..max_tries {
-            if let Ok(_) = write.send(Message::from(json.to_owned())).await {
+            if let Ok(_) = tx.send(Message::from(json.to_owned())).await {
                 log::debug!("Injected payload");
                 return Ok(());
             } else {

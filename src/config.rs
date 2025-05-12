@@ -19,6 +19,7 @@ pub struct AuthConfig {
 pub struct MainConfig {
     pub hostname: String,
     pub payload_path: String,
+    pub replace_other_instances: bool,
 }
 
 #[derive(Deserialize)]

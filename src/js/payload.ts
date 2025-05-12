@@ -12,6 +12,7 @@ interface Window {
      * Injected WebSocket instance used to communicate with the Python server
      */
     rpc: WebSocket | undefined;
+    terminate: (() => void) | undefined;
 }
 
 /**
