@@ -15,7 +15,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::str::FromStr;
 use tokio::io::Error;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tokio::sync::oneshot;
 
 mod config;
 mod enable_cef;
@@ -96,7 +97,7 @@ async fn main() -> Result<(), Error> {
     };
 
     // Internal exit signal
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<bool>();
+    let (exit_tx, mut exit_rx) = unbounded_channel::<bool>();
 
     // Get SteamWebHelper's debugger URL
     let debugger_url = match inject::try_get_debugger_url(None).await {
@@ -127,13 +128,22 @@ async fn main() -> Result<(), Error> {
 
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
+    let (init_tx, init_rx) = unbounded_channel::<bool>();
+
     // Spawn server task
-    tokio::spawn(start(cfg, tx, debugger_url.clone(), steam_secret));
+    tokio::spawn(start(
+        cfg,
+        exit_tx,
+        init_tx,
+        init_rx,
+        debugger_url.clone(),
+        steam_secret,
+    ));
 
     // Wait for exit event
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {},
-        success = rx.recv() => {
+        success = exit_rx.recv() => {
             if success.is_some_and(|v| !v) {
                 log::error!("^^^^^^^^ Exiting because of critical error above");
                 std::process::exit(1);
@@ -149,6 +159,8 @@ async fn main() -> Result<(), Error> {
 async fn start(
     cfg: Config,
     exit_tx: UnboundedSender<bool>,
+    init_tx: UnboundedSender<bool>,
+    init_rx: UnboundedReceiver<bool>,
     debugger_url: String,
     steam_secret: String,
 ) {
@@ -196,7 +208,20 @@ async fn start(
         cfg.auth,
         payload.clone(),
         exit_tx.clone(),
+        init_tx,
     ));
+
+    let new_tx = exit_tx.clone();
+
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
+        if init_rx.is_empty() {
+            log::error!("Connection timed out");
+            _ = new_tx.send(false);
+        } else {
+            log::info!("Conductor initialized!");
+        }
+    });
 
     // Inject payload into SteamWebHelper
     match inject::inject_payload(&debugger_url, &payload, 5).await {
@@ -207,6 +232,4 @@ async fn start(
             return;
         }
     }
-
-    log::info!("Conductor initialized!");
 }

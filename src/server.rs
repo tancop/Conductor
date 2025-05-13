@@ -17,8 +17,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::RwLock;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
+use tokio::sync::oneshot;
+use tokio::sync::{Mutex, RwLock};
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::tungstenite::{Message, Utf8Bytes};
 
@@ -33,6 +34,7 @@ struct Context {
     client_secrets: Option<Vec<String>>,
     payload: String,
     exit_tx: UnboundedSender<bool>,
+    init_tx: UnboundedSender<bool>,
 }
 
 pub async fn serve(
@@ -41,6 +43,7 @@ pub async fn serve(
     auth_cfg: Option<AuthConfig>,
     payload: String,
     exit_tx: UnboundedSender<bool>,
+    init_tx: UnboundedSender<bool>,
 ) {
     // Create the event loop and TCP listener we'll accept connections on
     let try_socket = TcpListener::bind(&addr).await;
@@ -66,6 +69,7 @@ pub async fn serve(
         client_secrets: auth_cfg.and_then(|cfg| cfg.tokens),
         payload,
         exit_tx,
+        init_tx,
     });
 
     while let Ok((stream, _)) = listener.accept().await {
@@ -117,10 +121,17 @@ async fn handle_connection(ctx: Arc<Context>, stream: TcpStream) {
         // Steam connection
         log::debug!("Received init message: '{}'", msg_text);
         ctx.connected.store(true, Ordering::Relaxed);
+
+        _ = ctx.init_tx.send(true);
+
         is_steam = true;
 
         let mut steam_tx = ctx.steam_tx.write().await;
         steam_tx.replace(tx.clone());
+
+        if let Err(e) = ws_stream.send(Message::text("Ready")).await {
+            log::error!("Error sending ready message: {}", e);
+        }
 
         // Drop the write lock immediately
         drop(steam_tx);

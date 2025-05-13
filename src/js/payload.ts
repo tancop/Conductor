@@ -14,6 +14,7 @@ interface Window {
     rpc: WebSocket | undefined;
     terminate: (() => void) | undefined;
     rpcSecret: string | undefined;
+    rpcReady: boolean | undefined;
 }
 
 /**

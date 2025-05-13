@@ -13,6 +13,10 @@ import type { RpcHandlers } from "./api";
     console.log("ready:", App.GetServicesInitialized());
     if (window.rpc && window.rpc.readyState === WebSocket.OPEN) {
         if ($REPLACE) {
+            if (window.rpcReady === false) {
+                console.log("Replacing before init is not allowed");
+                return;
+            }
             console.log("Closing open socket");
             window.rpc.close();
         } else {
@@ -20,6 +24,8 @@ import type { RpcHandlers } from "./api";
             return;
         }
     }
+
+    window.rpcReady = false;
 
     console.log("Opening new socket");
 
@@ -401,6 +407,9 @@ import type { RpcHandlers } from "./api";
     }
 
     ws.addEventListener("message", async (event) => {
+        if (event.data === "Ready") {
+            window.rpcReady = true;
+        }
         let msg: {
             secret?: string | undefined;
             command?: string | undefined;
