@@ -85,6 +85,7 @@ pub async fn try_get_debugger_url(max_tries: Option<u32>) -> Result<String, Debu
 #[derive(Deserialize)]
 struct TypeContainer {
     r#type: String,
+    value: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -97,7 +98,7 @@ struct InstanceCheckResult {
     result: Wrapper,
 }
 
-pub async fn is_another_instance_running(url: &str) -> bool {
+pub async fn is_another_instance_running(url: &str, rpc_secret: &str) -> bool {
     if let Ok((ws_stream, _)) = connect_async(url).await {
         let (mut tx, mut rx) = ws_stream.split();
 
@@ -105,7 +106,7 @@ pub async fn is_another_instance_running(url: &str) -> bool {
             "id": 0,
             "method": "Runtime.evaluate",
             "params": {
-                "expression": "window.rpc",
+                "expression": "window.rpcSecret",
                 "awaitPromise": true
             }
         });
@@ -132,7 +133,13 @@ pub async fn is_another_instance_running(url: &str) -> bool {
             return false;
         }
 
-        return true;
+        let res = res.result.result.value;
+
+        return if let Some(res) = res {
+            res.as_str() != rpc_secret
+        } else {
+            false
+        };
     }
 
     false

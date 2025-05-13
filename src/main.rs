@@ -107,7 +107,9 @@ async fn main() -> Result<(), Error> {
         }
     };
 
-    if inject::is_another_instance_running(&debugger_url).await {
+    let steam_secret = generate_secret();
+
+    if inject::is_another_instance_running(&debugger_url, &steam_secret).await {
         if cfg.conductor.replace_other_instances {
             log::debug!("Replacing other instances");
             match inject::kill_running_instance(&debugger_url, 5).await {
@@ -126,13 +128,12 @@ async fn main() -> Result<(), Error> {
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
     // Spawn server task
-    tokio::spawn(start(cfg, tx, debugger_url.clone()));
+    tokio::spawn(start(cfg, tx, debugger_url.clone(), steam_secret));
 
     // Wait for exit event
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {},
         success = rx.recv() => {
-            _ = inject::kill_running_instance(&debugger_url, 5).await;
             if success.is_some_and(|v| !v) {
                 log::error!("^^^^^^^^ Exiting because of critical error above");
                 std::process::exit(1);
@@ -140,14 +141,17 @@ async fn main() -> Result<(), Error> {
         }
     }
 
-    _ = inject::kill_running_instance(&debugger_url, 5).await;
-
     log::info!("Goodbye!");
 
     Ok(())
 }
 
-async fn start(cfg: Config, exit_tx: UnboundedSender<bool>, debugger_url: String) {
+async fn start(
+    cfg: Config,
+    exit_tx: UnboundedSender<bool>,
+    debugger_url: String,
+    steam_secret: String,
+) {
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     let Ok(current_exe) = std::env::current_exe() else {
         log::error!("Could not get current executable");
@@ -176,8 +180,6 @@ async fn start(cfg: Config, exit_tx: UnboundedSender<bool>, debugger_url: String
     };
 
     log::debug!("Sending payload to URL: {debugger_url}");
-
-    let steam_secret = generate_secret();
 
     // Setup payload with port and secret
     let payload = payload::make_payload(

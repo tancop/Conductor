@@ -415,8 +415,16 @@ import type { RpcHandlers } from "./api";
         }
     });
 
+    window.rpcSecret = "$SECRET";
+
     ws.addEventListener("open", () => {
         ws.send("init:$SECRET");
+    });
+
+    ws.addEventListener("close", () => {
+        window.rpcSecret = undefined;
+        window.rpc?.close();
+        window.rpc = undefined;
     });
 
     window.rpc = ws;
