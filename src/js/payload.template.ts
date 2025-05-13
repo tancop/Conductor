@@ -407,7 +407,7 @@ import type { RpcHandlers } from "./api";
             messageId: number;
         } = JSON.parse(event.data);
         if (msg.secret && msg.secret === "$SECRET") {
-            handleMessage(msg);
+            await handleMessage(msg);
 
             console.log("Executed RPC command:", msg);
         } else {
