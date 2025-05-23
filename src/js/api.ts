@@ -165,15 +165,26 @@ type RpcCommands = {
             appId: number;
         };
         returns: {
-            /** the app's type (game, software, tools...) */
-            type: AppType;
             /** is installed on this device? */
             installed: boolean;
             /** app display name */
             displayName: string;
             /** the app's store tags */
             storeTags: number[];
-        };
+        } & (
+            | {
+                  /** the app's type (shortcut) */
+                  type: AppType.Shortcut;
+                  /** the file this shortcut points to */
+                  shortcutExe: string;
+              }
+            | {
+                  /** the app's type (game, software, tools...) */
+                  type: Exclude<AppType, AppType.Shortcut>;
+                  /** developer name on Steam */
+                  developerName: string;
+              }
+        );
     };
     /**
      * Returns the localized name of a store tag.

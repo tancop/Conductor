@@ -176,6 +176,18 @@ export interface User {
     bIsOfflineMode: boolean;
 }
 
+export enum DeckTestResult {
+    Unsupported = 2,
+    Playable = 3,
+    Verified = 4,
+}
+
+export interface AppDetails {
+    iInstallFolder: number;
+    strDeveloperName: string;
+    strShortcutExe?: string;
+}
+
 declare global {
     /**
      * Namespace for global functions that call into Steam's native code
@@ -263,6 +275,11 @@ declare global {
              * @param appId the shortcut's ID
              */
             function RemoveShortcut(appId: number): void;
+
+            function RegisterForAppDetails(
+                appId: number,
+                callback: (details: AppDetails) => void,
+            ): void;
         }
 
         /**

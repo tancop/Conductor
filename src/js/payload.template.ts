@@ -7,7 +7,8 @@
  *  file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-import type { RpcHandlers } from "./api";
+import type { RpcHandlers, RpcResponse } from "./api";
+import { type AppDetails, AppType } from "./steam";
 
 (() => {
     console.log("ready:", App.GetServicesInitialized());
@@ -51,6 +52,27 @@ import type { RpcHandlers } from "./api";
         }
 
         return filtered as Pick<T, K[number]>;
+    }
+
+    async function getAppDetails(appId: number): Promise<AppDetails> {
+        return new Promise((resolve, reject) => {
+            let appFound = false;
+            for (const id of window.appStore.m_mapApps.data_.keys()) {
+                if (id === appId) {
+                    appFound = true;
+                    break;
+                }
+            }
+
+            if (!appFound) {
+                reject(`App with ID ${appId} not found in library`);
+                return;
+            }
+
+            SteamClient.Apps.RegisterForAppDetails(appId, (e: AppDetails) => {
+                resolve(e);
+            });
+        });
     }
 
     let handlers: RpcHandlers = {
@@ -279,14 +301,32 @@ import type { RpcHandlers } from "./api";
 
             let app = appEntry.value_;
 
-            return {
-                success: true,
+            let details = await getAppDetails(msg.args.appId);
 
-                type: app.app_type,
-                installed: app.installed ?? false,
-                displayName: app.display_name,
-                storeTags: app.store_tag,
-            };
+            let result: RpcResponse<"GetAppInfo">;
+
+            if (app.app_type === AppType.Shortcut) {
+                result = {
+                    success: true,
+                    type: app.app_type,
+                    installed: app.installed ?? false,
+                    displayName: app.display_name,
+                    storeTags: app.store_tag,
+                    // biome-ignore lint/style/noNonNullAssertion: always defined on a shortcut entry
+                    shortcutExe: details.strShortcutExe!,
+                };
+            } else {
+                result = {
+                    success: true,
+                    type: app.app_type,
+                    installed: app.installed ?? false,
+                    displayName: app.display_name,
+                    storeTags: app.store_tag,
+                    developerName: details.strDeveloperName,
+                };
+            }
+
+            return result;
         },
         GetTagName: async (msg) => {
             if (!msg.args.tagId) {
