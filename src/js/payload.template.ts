@@ -313,8 +313,11 @@ import { type AppDetails, AppType } from "./steam";
                     installed: app.installed ?? false,
                     displayName: app.display_name,
                     storeTags: app.store_tag,
+                    launchOptions: details.strLaunchOptions,
                     // biome-ignore lint/style/noNonNullAssertion: always defined on a shortcut entry
                     shortcutExe: details.strShortcutExe!,
+                    // biome-ignore lint/style/noNonNullAssertion: always defined on a shortcut entry
+                    startDir: details.strShortcutStartDir!,
                 };
             } else {
                 result = {
@@ -324,6 +327,7 @@ import { type AppDetails, AppType } from "./steam";
                     installed: app.installed ?? false,
                     displayName: app.display_name,
                     storeTags: app.store_tag,
+                    launchOptions: details.strLaunchOptions,
                     developerName: details.strDeveloperName,
                     installFolder: details.iInstallFolder,
                 };

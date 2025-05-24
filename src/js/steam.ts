@@ -176,16 +176,49 @@ export interface User {
     bIsOfflineMode: boolean;
 }
 
+/**
+ * Result of a single Steam Deck/SteamOS compatibility test
+ */
 export enum DeckTestResult {
-    Unsupported = 2,
-    Playable = 3,
-    Verified = 4,
+    /** Minor issue like on-screen keyboard not opening automatically */
+    Note = 1,
+    /** Critical issue that makes the app unusable, like kernel anticheat with no Linux support */
+    Fail = 2,
+    /** User experience problem like small text or wrong controller glyphs */
+    Warning = 3,
+    /** Test passed with no problems */
+    Pass = 4,
 }
 
+/**
+ * Detailed info about some app in your library
+ */
 export interface AppDetails {
+    /**
+     * Index of the install folder this app is stored in.
+     * `-1` for uninstalled apps or shortcuts
+     */
     iInstallFolder: number;
+    /** Name of the app's developer on Steam. Empty string for shortcuts */
     strDeveloperName: string;
+    /** Launch options passed to the app exe */
+    strLaunchOptions: string;
+    /** Results from Deck compatibility testing */
+    vecDeckCompatTestResults: {
+        /** Test result - pass, fail, warning or info */
+        test_result: DeckTestResult;
+        /**
+         * Localization token for the test name/result combination
+         * like `#SteamDeckVerified_TestResult_ControllerGlyphsDoNotMatchDeckDevice`
+         * for non-matching input glyphs
+         */
+        test_loc_token: string;
+    }[];
+
+    /** Path to the linked executable. Only defined for shortcuts */
     strShortcutExe?: string;
+    /** Path to folder where the app starts. Only defined for shortcuts */
+    strShortcutStartDir?: string;
 }
 
 declare global {

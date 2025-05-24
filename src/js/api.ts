@@ -166,19 +166,23 @@ type RpcCommands = {
         };
         returns: {
             /** app ID */
-            id: number,
+            id: number;
             /** is installed on this device? */
             installed: boolean;
             /** app display name */
             displayName: string;
             /** the app's store tags */
             storeTags: number[];
+            /** launch options passed to the app */
+            launchOptions: string;
         } & (
             | {
                   /** the app's type (shortcut) */
                   type: AppType.Shortcut;
                   /** the file this shortcut points to */
                   shortcutExe: string;
+                  /** folder used to start the app */
+                  startDir: string;
               }
             | {
                   /** the app's type (game, software, tools...) */
