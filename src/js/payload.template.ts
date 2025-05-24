@@ -308,6 +308,7 @@ import { type AppDetails, AppType } from "./steam";
             if (app.app_type === AppType.Shortcut) {
                 result = {
                     success: true,
+                    id: msg.args.appId,
                     type: app.app_type,
                     installed: app.installed ?? false,
                     displayName: app.display_name,
@@ -318,11 +319,13 @@ import { type AppDetails, AppType } from "./steam";
             } else {
                 result = {
                     success: true,
+                    id: msg.args.appId,
                     type: app.app_type,
                     installed: app.installed ?? false,
                     displayName: app.display_name,
                     storeTags: app.store_tag,
                     developerName: details.strDeveloperName,
+                    installFolder: details.iInstallFolder,
                 };
             }
 
@@ -350,7 +353,7 @@ import { type AppDetails, AppType } from "./steam";
                     ) ?? [],
             };
         },
-        GetLibraryFolders: async (msg) => {
+        GetInstallFolders: async (msg) => {
             let steamFolders =
                 await SteamClient.InstallFolder.GetInstallFolders();
 

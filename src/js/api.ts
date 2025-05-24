@@ -165,6 +165,8 @@ type RpcCommands = {
             appId: number;
         };
         returns: {
+            /** app ID */
+            id: number,
             /** is installed on this device? */
             installed: boolean;
             /** app display name */
@@ -183,6 +185,8 @@ type RpcCommands = {
                   type: Exclude<AppType, AppType.Shortcut>;
                   /** developer name on Steam */
                   developerName: string;
+                  /** index of the folder this app is installed to */
+                  installFolder: number;
               }
         );
     };
@@ -215,19 +219,19 @@ type RpcCommands = {
     /**
      * Returns info about library folders on this device.
      */
-    GetLibraryFolders: {
+    GetInstallFolders: {
         args: {
             /** filter used to pick some fields (default: all fields) */
-            fields?: (keyof LibraryFolder)[];
+            fields?: (keyof InstallFolder)[];
         };
         returns: {
             /** filtered data for every folder */
-            folders: Partial<LibraryFolder[]>;
+            folders: Partial<InstallFolder[]>;
         };
     };
 };
 
-interface LibraryFolder {
+interface InstallFolder {
     index: number;
     isDefault: boolean;
     isRemovable: boolean;
