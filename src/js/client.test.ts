@@ -136,7 +136,7 @@ if (res.success) {
                     })
                     .then((app) => {
                         if (app.success) {
-                            apps.push({ id: appId, ...app });
+                            apps.push(app);
                         } else {
                             console.error("GetAppInfo failed");
                         }
