@@ -129,6 +129,13 @@ import { type AppDetails, AppType } from "./steam";
 
             SteamClient.Installs.OpenInstallWizard([msg.args.appId]);
 
+            if (msg.args.folderIdx) {
+                await SteamClient.Installs.SetInstallFolder(
+                    msg.args.folderIdx,
+                );
+                SteamClient.Installs.ContinueInstall();
+            }
+
             return {
                 success: true,
             };
@@ -142,6 +149,13 @@ import { type AppDetails, AppType } from "./steam";
             }
 
             SteamClient.Installs.OpenInstallWizard(msg.args.appIds);
+
+            if (msg.args.folderIdx) {
+                await SteamClient.Installs.SetInstallFolder(
+                    msg.args.folderIdx,
+                );
+                SteamClient.Installs.ContinueInstall();
+            }
 
             return {
                 success: true,

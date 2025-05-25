@@ -64,6 +64,8 @@ type RpcCommands = {
         args: {
             /** app ID to install */
             appId: number;
+            /** index of the folder to install to, asks the user if not set */
+            folderIdx?: number;
         };
         returns: {};
     };
@@ -74,6 +76,8 @@ type RpcCommands = {
         args: {
             /** app IDs to install */
             appIds: number[];
+            /** index of the folder to install to, asks the user if not set */
+            folderIdx?: number;
         };
         returns: {};
     };

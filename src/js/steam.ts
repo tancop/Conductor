@@ -356,6 +356,18 @@ declare global {
             function OpenInstallWizard(appIds: number[]): void;
 
             /**
+             * Sets the folder for the current install. No effect if there's no install in progress.
+             *
+             * @param folderIdx folder index
+             */
+            function SetInstallFolder(folderIdx: number): Promise<void>;
+
+            /**
+             * Continues the current install.
+             */
+            function ContinueInstall(): void;
+
+            /**
              * Uninstalls the provided apps if {@link autoConfirm} is `true`, opens the uninstall wizard if it's `false`.
              * Invalid IDs or uninstalled apps will be ignored.
              *
