@@ -213,7 +213,7 @@ async fn start(
     let new_tx = exit_tx.clone();
 
     tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
         if init_rx.is_empty() {
             log::error!("Connection timed out");
             _ = new_tx.send(false);
